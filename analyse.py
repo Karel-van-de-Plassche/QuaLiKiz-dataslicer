@@ -14,10 +14,12 @@ import time
 from cycler import cycler
 from collections import OrderedDict
 from math import ceil
-import qlkANNk
 
 import matplotlib.gridspec as gridspec
 from IPython import embed
+from webalyse import *
+from bokeh.plotting import figure, show
+from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox, gridplot
 
 def takespread(sequence, num):
     length = float(len(sequence))
@@ -30,22 +32,15 @@ def find_nearest(array,value):
 
 starttime = time.time()
 
-ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
-
-
+ds = xr.open_dataset('/home/karel/working/QuaLiKiz/runs/Zeff1.0epsilon0.15Nustar0.001Ti_Te_rel1.0/Zeff1.0epsilon0.15Nustar0.001Ti_Te_rel1.0.nc')
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 
 slider_dict = OrderedDict()
 numslider = 0
 for name in scan_dims:
-    slider_dict[name] = []
-    for i in range(0,len(ds[name].shape)):
-        slider_dict[name].append({'posvals': np.unique(ds[name].values)})
-        numslider += 1
-print ('analysed sliders at t=' + str(time.time() - starttime))
+    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), title=name, height=80)
 
-slice_ = xr.Dataset()
 def plot_subslice(ax, subslice):
         y = subslice
         x, yv = np.meshgrid(subslice['kthetarhos'], subslice[xaxis_name])
@@ -79,14 +74,6 @@ def update(val):
 
     print ('Slicing took              ' + str(time.time() - starttime) + ' s')
     starttime = time.time()
-    fourD = []
-    for name in ['Ati' , 'qx', 'Ti_Te', 'smag']:
-        if name != xaxis_name:
-            fourD.append(np.repeat(slice_[name].data, len(slice_[xaxis_name])))
-        else:
-            fourD.append(slice_[xaxis_name].data)
-
-    qe_GB, qi_GB, pfe_GB = qlkANNk.fourD_flux(*fourD)
 
     x = slice_[xaxis_name]
     y = np.vstack([np.atleast_2d(slice_['efe_GB']), slice_['efi_GB'].T]).T
@@ -94,9 +81,6 @@ def update(val):
     efax.set_prop_cycle(cycler('color', [plt.cm.prism(i) for i in np.linspace(0, 1, len(ds['nions']) + 1)]))
     efax.plot(x, y, marker='o')
     efax.set_prop_cycle(cycler('color', [plt.cm.prism(i) for i in np.linspace(0, 1, len(ds['nions']) + 1)]))
-    efax.plot(x, qe_GB, linestyle='--')
-    efax.plot(x, qi_GB, linestyle='--')
-    
     
     x = slice_[xaxis_name]
     y = np.vstack([np.atleast_2d(slice_['pfe_GB']), slice_['pfi_GB'].T]).T
@@ -153,111 +137,108 @@ def swap_x(event):
 
             
 
-width = 14
-fig = plt.figure()
-fig.set_tight_layout(True)
-gs = gridspec.GridSpec(2, 1)
-gs_plots = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[0])
-gs_bars = gridspec.GridSpecFromSubplotSpec(numslider, width, subplot_spec=gs[1])
-gs_omegam = gridspec.GridSpecFromSubplotSpec(2, 2, gs_plots[2])
-slidenr = 0
-#mainplot = gs[:numslider*2,:]
-efax = plt.subplot(gs_plots[0])
-pfax = plt.subplot(gs_plots[1])
-gamlowax = plt.subplot(gs_omegam[0,0])
-gamhighax = plt.subplot(gs_omegam[0,1])
-omelowax = plt.subplot(gs_omegam[1,0])
-omehighax = plt.subplot(gs_omegam[1,1])
-xaxis_name = 'Ate'
-efax.set_xlabel(xaxis_name)
-efax.set_ylabel('Energy Flux [GB]')
-pfax.set_xlabel(xaxis_name)
-pfax.set_ylabel('Particle Flux [GB]')
+figs = {}
+figs['effig'] = figure(title="Heat Flux", x_axis_label='xlabel', y_axis_label='ylab', height=700, width=700)
+figs['pffig'] = figure(title="Particle Flux", x_axis_label='xlabel', y_axis_label='ysab', height=700, width=700)
+figs['gamlow'] = figure(y_axis_label='gam_GB' , height=350, width=350)
+figs['gamhigh'] = figure(y_axis_label=' ', height=350, width=350)
+figs['omelow'] = figure(x_axis_label='kthetarhos', y_axis_label='ome_GB' , height=350, width=350)
+figs['omehigh'] = figure(x_axis_label='kthetarhos',y_axis_label=' ',  height=350, width=350)
+gamrow = row(figs['gamlow'], figs['gamhigh'], width=700, height=350, sizing_mode='scale_width')
+omerow = row(figs['omelow'], figs['omehigh'], width=700, height=350, sizing_mode='scale_width')
+#freqgrid = gridplot([[figs['gamlow'], figs['gamhigh']],
+#                  [figs['omelow'], figs['omehigh']]])
+freqgrid = column(gamrow, omerow, width=700, height=700, sizing_mode='scale_width')
 
-kthetarhos_cutoff = 1
-gamlowax.set_ylabel('gam_GB')
-gamlowax.set_xlim([0, kthetarhos_cutoff])
-gamhighax.set_xlim([kthetarhos_cutoff, 1.05 * np.max(ds['kthetarhos'])])
-omelowax.set_ylabel('ome_GB')
-omelowax.set_xlabel('kthetarhos')
-omelowax.set_xlim([0, kthetarhos_cutoff])
-omehighax.set_xlabel('kthetarhos')
-omehighax.set_xlim([kthetarhos_cutoff, 1.05 * np.max(ds['kthetarhos'])])
+plotrow = row(figs['effig'], figs['pffig'], freqgrid, sizing_mode='scale_width', height=700, width=2100)
+sliderrow = widgetbox(children=slider_dict.values())
+for name, fig in figs.items():
+    fig.line([1,2,3],[4,5,6])
+show(column(plotrow, sliderrow, sizing_mode='scale_width'))
 
-flux_axes = [efax, pfax]
-freq_axes = [gamlowax, gamhighax, omelowax, omehighax,]
-axes = flux_axes + freq_axes
 
-#tableax = plt.subplot(gs[:numslider,-2:])
-pos_scans = [
-'Ati',
-'Ate',
-'Ane',
-'qx',
-'smag',
-'x',
-'Ti/Te',
-'Zeffx',
-'Nustar']
-tab = {}
-cellText = []
-
-#for name, value in ds.coords.items():
-#    if name in pos_scans and name not in slider_dict:
-#        tab[name] = value
-#        cellText.append([name, '{0:.1g}'.format(float(value))])
-#tableax.axis('off')
-#table = tableax.table(cellText=cellText, loc='center')
-#table.set_fontsize(matplotlib.rcParams['font.size'])
-#table.auto_set_font_size(False)
-
-print ('initialized plots at t=' + str(time.time() - starttime))
-for name, slider_list in slider_dict.items():
-    for i, slider_entry in enumerate(slider_list):
-        slidenr +=1
-        ax = plt.subplot(gs_bars[slidenr - 1, 2:-1])
-        print(numslider+slidenr, width-2)
-        posvals = slider_entry['posvals']
-        if len(slider_list) > 1:
-            label = name+str(i)
-        else:
-            label = name
-        if name == 'Nustar':
-            slider = Slider(ax, '', np.log10(np.min(posvals)), np.log10(np.max(posvals)), valinit=np.log10(find_nearest(posvals, np.median(posvals))))
-        else:
-            slider = Slider(ax, '', np.min(posvals), np.max(posvals), valinit=find_nearest(posvals, np.median(posvals)))
-        for posval in posvals:
-            if name == 'Nustar':
-                slider.ax.plot([np.log10(posval), np.log10(posval)], [0, 1], color='r')
-            else:
-                slider.ax.plot([posval, posval], [0, 1], color='r')
-
-        slider.valtext.set_visible(False)
-        slider.on_changed(update)
-        if name == xaxis_name:
-            slider.poly.set_color('green')
-            slider.active = False
-        slider_entry['slider'] = slider
-        ax = plt.subplot(gs_bars[slidenr - 1, -1], frameon=False)
-        ax.axis('off')
-        dispval = ax.text(0.5,0.5,slider.val)
-        slider_entry['dispval'] = dispval
-        ax = plt.subplot(gs_bars[slidenr - 1, :2])
-        but = Button(ax, label, color='0.5')
-        but.on_clicked(swap_x)
-        slider_entry['button'] = but
-print ('build sliders at t=' + str(time.time() - starttime))
-
-fakelines = []
-#mainax.set_prop_cycle(cycler('color', plt.get_cmap('Paired')))
-efax.set_prop_cycle(cycler('color', [plt.cm.prism(i) for i in np.linspace(0, 1, len(ds['nions']) + 1)]))
-for i in range(len(ds['nions']) + 1):
-    fakelines.extend(efax.plot([],[]))
-
-names = ['elec']
-names.extend(['A = ' + str(Ai.data) for Ai in ds['Ai']])
-efax.legend(fakelines, names, loc='upper left', fontsize='small')
-pfax.legend(fakelines, names, loc='upper left', fontsize='small')
-update('')
-print ('plotted at t=' + str(time.time() - starttime))
-plt.show()
+#width = 14
+#fig = plt.figure()
+#fig.set_tight_layout(True)
+#gs = gridspec.GridSpec(2, 1)
+#gs_plots = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[0])
+#gs_bars = gridspec.GridSpecFromSubplotSpec(numslider, width, subplot_spec=gs[1])
+#gs_omegam = gridspec.GridSpecFromSubplotSpec(2, 2, gs_plots[2])
+#slidenr = 0
+##mainplot = gs[:numslider*2,:]
+#efax = plt.subplot(gs_plots[0])
+#pfax = plt.subplot(gs_plots[1])
+#gamlowax = plt.subplot(gs_omegam[0,0])
+#gamhighax = plt.subplot(gs_omegam[0,1])
+#omelowax = plt.subplot(gs_omegam[1,0])
+#omehighax = plt.subplot(gs_omegam[1,1])
+#xaxis_name = 'Ate'
+#efax.set_xlabel(xaxis_name)
+#efax.set_ylabel('Energy Flux [GB]')
+#pfax.set_xlabel(xaxis_name)
+#pfax.set_ylabel('Particle Flux [GB]')
+#
+#kthetarhos_cutoff = 1
+#gamlowax.set_ylabel('gam_GB')
+#gamlowax.set_xlim([0, kthetarhos_cutoff])
+#gamhighax.set_xlim([kthetarhos_cutoff, 1.05 * np.max(ds['kthetarhos'])])
+#omelowax.set_ylabel('ome_GB')
+#omelowax.set_xlabel('kthetarhos')
+#omelowax.set_xlim([0, kthetarhos_cutoff])
+#omehighax.set_xlabel('kthetarhos')
+#omehighax.set_xlim([kthetarhos_cutoff, 1.05 * np.max(ds['kthetarhos'])])
+#
+#flux_axes = [efax, pfax]
+#freq_axes = [gamlowax, gamhighax, omelowax, omehighax,]
+#axes = flux_axes + freq_axes
+#
+#print ('initialized plots at t=' + str(time.time() - starttime))
+#for name, slider_list in slider_dict.items():
+#    for i, slider_entry in enumerate(slider_list):
+#        slidenr +=1
+#        ax = plt.subplot(gs_bars[slidenr - 1, 2:-1])
+#        print(numslider+slidenr, width-2)
+#        posvals = slider_entry['posvals']
+#        if len(slider_list) > 1:
+#            label = name+str(i)
+#        else:
+#            label = name
+#        if name == 'Nustar':
+#            slider = Slider(ax, '', np.log10(np.min(posvals)), np.log10(np.max(posvals)), valinit=np.log10(find_nearest(posvals, np.median(posvals))))
+#        else:
+#            slider = Slider(ax, '', np.min(posvals), np.max(posvals), valinit=find_nearest(posvals, np.median(posvals)))
+#        for posval in posvals:
+#            if name == 'Nustar':
+#                slider.ax.plot([np.log10(posval), np.log10(posval)], [0, 1], color='r')
+#            else:
+#                slider.ax.plot([posval, posval], [0, 1], color='r')
+#
+#        slider.valtext.set_visible(False)
+#        slider.on_changed(update)
+#        if name == xaxis_name:
+#            slider.poly.set_color('green')
+#            slider.active = False
+#        slider_entry['slider'] = slider
+#        ax = plt.subplot(gs_bars[slidenr - 1, -1], frameon=False)
+#        ax.axis('off')
+#        dispval = ax.text(0.5,0.5,slider.val)
+#        slider_entry['dispval'] = dispval
+#        ax = plt.subplot(gs_bars[slidenr - 1, :2])
+#        but = Button(ax, label, color='0.5')
+#        but.on_clicked(swap_x)
+#        slider_entry['button'] = but
+#print ('build sliders at t=' + str(time.time() - starttime))
+#
+#fakelines = []
+##mainax.set_prop_cycle(cycler('color', plt.get_cmap('Paired')))
+#efax.set_prop_cycle(cycler('color', [plt.cm.prism(i) for i in np.linspace(0, 1, len(ds['nions']) + 1)]))
+#for i in range(len(ds['nions']) + 1):
+#    fakelines.extend(efax.plot([],[]))
+#
+#names = ['elec']
+#names.extend(['A = ' + str(Ai.data) for Ai in ds['Ai']])
+#efax.legend(fakelines, names, loc='upper left', fontsize='small')
+#pfax.legend(fakelines, names, loc='upper left', fontsize='small')
+#update('')
+#print ('plotted at t=' + str(time.time() - starttime))
+#plt.show()
