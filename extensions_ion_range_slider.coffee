@@ -46,6 +46,7 @@ class IonRangeSliderView extends InputWidget.View
     disable = @model.disabled
     range = @model.range or [max, min]
     values = @model.values
+    prettify_enabled = @model.prettify_enabled
     [from, to] = range
     step = @model.step or ((max - min)/50)
     opts = {
@@ -59,8 +60,12 @@ class IonRangeSliderView extends InputWidget.View
       disable: disable,
       onChange: @slide,
       onFinish: @slidestop,
-      values: values
+      values: values,
+      prettify_enabled: prettify_enabled,
     }
+
+    if @model.prettify
+      opts['prettify'] = @prettify
 
     input = @$el.find('.slider')[0]
     slider = jQuery(input).ionRangeSlider(opts)
@@ -81,6 +86,8 @@ class IonRangeSliderView extends InputWidget.View
     @model.range = range
     if @callbackWrapper then @callbackWrapper()
 
+  prettify: (data) =>
+    @model.prettify?.execute(data)
 
 class IonRangeSlider extends InputWidget.Model
 
@@ -105,6 +112,8 @@ class IonRangeSlider extends InputWidget.Model
       callback_throttle: [ p.Number,      200          ]
       callback_policy:   [ p.String,      "throttle"   ]
       values:            [ p.Any,                      ]
+      prettify_enabled:  [ p.Bool,        true         ]
+      prettify:          [ p.Any,         null         ]
   }
 
 # This is boilerplate. Every implementation should export a Model

@@ -1,5 +1,5 @@
 """Example implementation of two double ended sliders as extension widgets"""
-from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List
+from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, Function
 from bokeh.models import InputWidget
 from bokeh.models.callbacks import Callback
 from bokeh.core.enums import SliderCallbackPolicy
@@ -71,7 +71,21 @@ class IonRangeSlider(InputWidget):
        "mouseup": the callback will be executed only once when the slider is released.
        The `mouseup` policy is intended for scenarios in which the callback is expensive in time.
     """)
-    values = List(Float)
+
+    values = List(Float, help="""
+    Set up your own array of possible slider values. They could be numbers or strings. 
+    If the values array is set up, min, max and step param, can no longer be changed.
+    """)
+
+    prettify_enabled = Bool(default=True, help="""
+    Improve readability of long numbers. 10000000 -> 10 000 000
+    """)
+
+    prettify = Instance(Callback, help="""
+    Set up your own prettify function. Can be anything. For example, you can set up unix
+    time as slider values and than transform them to cool looking dates.
+    """)
+
 
 
 if __name__ == '__main__':
@@ -109,10 +123,17 @@ if __name__ == '__main__':
             }
             source.trigger('change');
         """)
+    print (dict(source=source))
     
     
+    code = CustomJS(code="""
+             var f = cb_obj
+             f = Number(f.toPrecision(2))
+             return f
+         """)
     slider = Slider(start=0, end=5, step=0.1, value=1, title="Bokeh Slider - Power", callback=callback_single)
     ion_range_slider = IonRangeSlider(values=list(range(10)), title='Ion Range Slider - Range', callback=callback_ion, callback_policy='continuous')
+    ion_range_slider2 = IonRangeSlider(values=[0, 1e-4, 0.00999993], title='Test Slider', prettify_enabled=True, prettify=code)
     
-    layout = column(plot, slider, ion_range_slider)
+    layout = column(plot, slider, ion_range_slider, ion_range_slider2)
     show(layout)
