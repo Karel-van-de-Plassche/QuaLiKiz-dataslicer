@@ -70,6 +70,7 @@ class IonRangeSliderView extends InputWidget.View
     input = @$el.find('.slider')[0]
     slider = jQuery(input).ionRangeSlider(opts)
     range = [from, to]
+    @model.range = range
     @$( "##{ @model.id }" ).val( range.join(' - '))
     @$el.find('.bk-slider-parent').height(@model.height)
     return @
