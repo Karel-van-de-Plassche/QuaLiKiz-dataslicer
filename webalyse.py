@@ -1,5 +1,5 @@
 """Example implementation of two double ended sliders as extension widgets"""
-from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, Function
+from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, Function, String
 from bokeh.models import InputWidget
 from bokeh.models.callbacks import Callback
 from bokeh.core.enums import SliderCallbackPolicy
@@ -84,6 +84,14 @@ class IonRangeSlider(InputWidget):
     prettify = Instance(Callback, help="""
     Set up your own prettify function. Can be anything. For example, you can set up unix
     time as slider values and than transform them to cool looking dates.
+    """)
+
+    force_edges = Bool(default=False, help="""
+    Slider will be always inside it's container.
+    """)
+
+    prefix = String(default="", help="""
+    Set prefix for values. Will be set up right before the number: $100
     """)
 
 

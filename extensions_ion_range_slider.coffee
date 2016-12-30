@@ -47,6 +47,8 @@ class IonRangeSliderView extends InputWidget.View
     range = @model.range or [max, min]
     values = @model.values
     prettify_enabled = @model.prettify_enabled
+    force_edges = @model.force_edges
+    prefix = @model.prefix
     [from, to] = range
     step = @model.step or ((max - min)/50)
     opts = {
@@ -62,6 +64,7 @@ class IonRangeSliderView extends InputWidget.View
       onFinish: @slidestop,
       values: values,
       prettify_enabled: prettify_enabled,
+      prefix: prefix
     }
 
     if @model.prettify
@@ -115,6 +118,8 @@ class IonRangeSlider extends InputWidget.Model
       values:            [ p.Any,                      ]
       prettify_enabled:  [ p.Bool,        true         ]
       prettify:          [ p.Any,         null         ]
+      force_edges:       [ p.Bool,        false        ]
+      prefix:            [ p.String,      ""           ]
   }
 
 # This is boilerplate. Every implementation should export a Model
