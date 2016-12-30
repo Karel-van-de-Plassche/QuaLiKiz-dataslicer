@@ -22,6 +22,8 @@ from bokeh.plotting import figure, show
 from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox, gridplot
 from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource
+from bokeh.palettes import Set1 as sepcolor
+sepcolor = sepcolor[9]
 
 def takespread(sequence, num):
     length = float(len(sequence))
@@ -53,9 +55,9 @@ def extract_plotdata(sel_dict):
 
     
     plotdata['x_flux'] = slice_[xaxis_name].data
-    plotdata['y_ef'] = np.vstack([np.atleast_2d(slice_['efe_GB'].data), slice_['efi_GB'].data.T]).T
-    plotdata['y_ef'] = slice_['efe_GB'].data
-    plotdata['y_pf'] = np.vstack([np.atleast_2d(slice_['pfe_GB'].data), slice_['pfi_GB'].data.T]).T
+    plotdata['y_effig'] = np.vstack([np.atleast_2d(slice_['efe_GB'].data), slice_['efi_GB'].data.T]).T
+    #plotdata['y_ef'] = slice_['efe_GB'].data
+    plotdata['y_pffig'] = np.vstack([np.atleast_2d(slice_['pfe_GB'].data), slice_['pfi_GB'].data.T]).T
 
 
     for suff in ['low', 'high']:
@@ -114,14 +116,20 @@ def read_sliders():
     return sel_dict
 
 def updater(attr, old, new):
-    sel_dict = read_sliders()
+    try:
+        sel_dict = read_sliders()
+    except TypeError:
+        return
     #print(sel_dict)
     plotdata = extract_plotdata(sel_dict)
     #print(plotdata)
     #plot_data(plotdata)
     #print(source.data)
-    sources['effig'].data = {xaxis_name: plotdata['x_flux'],
-                             'ylabel': plotdata['y_ef']}
+    for name in ['effig', 'pffig']:
+        for part, data in zip(range(num_particles), plotdata['y_' + name].T):
+            longname = name + str(part)
+            sources[longname].data = {xaxis_name: plotdata['x_flux'],
+                                  name: data} 
     #print(sources['effig'].data)
 
     #figs['omehigh'].title.text = sel_dict['qx']
@@ -143,20 +151,35 @@ numslider = 0
 xaxis_name = 'Ate'
 kthetarhos_cutoff = 1
 for name in scan_dims:
-    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=60, prettify=round, force_edges=True)
+    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round)
 
 
 figs = {}
-height_block =200 
+height_block = 200
+flux_tools = 'box_zoom,pan,zoom_in,zoom_out,reset,save,hover'
+freq_tools = 'save,hover'
+
 x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
-figs['effig'] = figure(title="Heat Flux", x_axis_label=xaxis_name, y_axis_label='ylab', height=2*height_block, width=2*height_block, x_range=x_range)
-figs['pffig'] = figure(title="Particle Flux", x_axis_label=xaxis_name, y_axis_label='ysab', height=2*height_block, width=2*height_block, x_range=x_range)
-figs['gamlow'] = figure(y_axis_label='gam_GB' , height=height_block, width=height_block)
-figs['gamhigh'] = figure(y_axis_label=' ', height=height_block, width=height_block)
-figs['omelow'] = figure(x_axis_label='kthetarhos', y_axis_label='ome_GB' , height=height_block, width=height_block)
-figs['omehigh'] = figure(x_axis_label='kthetarhos',y_axis_label=' ',  height=height_block, width=height_block)
-gamrow = row(figs['gamlow'], figs['gamhigh'], height=height_block, sizing_mode='scale_width')
-omerow = row(figs['omelow'], figs['omehigh'], height=height_block, sizing_mode='scale_width')
+figs['effig']   = figure(x_axis_label=xaxis_name,   y_axis_label='ylab',
+                         height=2*height_block, width=2*height_block,
+                         tools=flux_tools, x_range=x_range)
+figs['pffig']   = figure(x_axis_label=xaxis_name,   y_axis_label='ysab',
+                         height=2*height_block, width=2*height_block,
+                         tools=flux_tools, x_range=x_range)
+figs['gamlow']  = figure(x_axis_label=' ',          y_axis_label='gam_GB',
+                         height=height_block,   width=height_block,
+                         tools=freq_tools)
+figs['gamhigh'] = figure(x_axis_label=' ',          y_axis_label=' ',
+                         height=height_block,   width=height_block,
+                         tools=freq_tools)
+figs['omelow']  = figure(x_axis_label='kthetarhos', y_axis_label='ome_GB',
+                         height=height_block,   width=height_block,
+                         tools=freq_tools)
+figs['omehigh'] = figure(x_axis_label='kthetarhos', y_axis_label=' ',
+                         height=height_block,   width=height_block,
+                         tools=freq_tools)
+gamrow = row(figs['gamlow'], figs['gamhigh'], height=height_block, width=height_block, sizing_mode='scale_width')
+omerow = row(figs['omelow'], figs['omehigh'], height=height_block, width=height_block, sizing_mode='scale_width')
 #freqgrid = gridplot([[figs['gamlow'], figs['gamhigh']],
 #                  [figs['omelow'], figs['omehigh']]])
 freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
@@ -167,10 +190,19 @@ sliderrow = widgetbox(children=slider_dict.values(), height=height_block)
 #    fig.line([1,2,3],[4,5,6])
 
 sources = {}
+num_particles = ds.dims['nions'] + 1
+names_particles = ['elec'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
+for name in ['effig', 'pffig']:
+    for part in range(num_particles):
+        longname = name + str(part)
+        sources[longname] = ColumnDataSource({xaxis_name:[], name:[]})
+        figs[name].scatter(xaxis_name, name, source=sources[longname], color=sepcolor[part], legend=names_particles[part])
+        figs[name].line(xaxis_name, name, source=sources[longname], color=sepcolor[part], legend=names_particles[part])
 for name in ['effig', 'pffig', 'gamlow', 'gamhigh', 'omelow', 'omehigh']:
     sources[name] = ColumnDataSource({xaxis_name:[], 'ylabel':[]})
     figs[name].scatter(xaxis_name, 'ylabel', source=sources[name])
-    figs[name].line(xaxis_name, 'ylabel', source=sources[name])
+    figs[name].multi_line(xaxis_name, 'ylabel', source=sources[name])
+
 for slider in slider_dict.values():
     slider.on_change('range', updater)
 if __name__ == '__main__':
