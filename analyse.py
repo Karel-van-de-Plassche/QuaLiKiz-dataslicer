@@ -34,7 +34,7 @@ def find_nearest(array,value):
 
 starttime = time.time()
 
-ds = xr.open_dataset('/home/karel/working/QuaLiKiz/runs/Zeff1.0epsilon0.15Nustar0.001Ti_Te_rel1.0/Zeff1.0epsilon0.15Nustar0.001Ti_Te_rel1.0.nc')
+ds = xr.open_dataset('/home/karel/Zeff_combined.nc')
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 
@@ -133,28 +133,36 @@ def updater(attr, old, new):
     #figs['omehigh'].line([1,2,3],[5,4,3])
     #print(sel_dict)
 # Create slider dict
+round = CustomJS(code="""
+         var f = cb_obj
+         f = Number(f.toPrecision(2))
+         return f
+     """)
 slider_dict = OrderedDict()
 numslider = 0
 xaxis_name = 'Ate'
 kthetarhos_cutoff = 1
 for name in scan_dims:
-    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), title=name, height=80)
+    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=60, prettify=round, force_edges=True)
+
 
 figs = {}
-figs['effig'] = figure(title="Heat Flux", x_axis_label=xaxis_name, y_axis_label='ylab', height=700, width=700, x_range=[-5,10])
-figs['pffig'] = figure(title="Particle Flux", x_axis_label=xaxis_name, y_axis_label='ysab', height=700, width=700)
-figs['gamlow'] = figure(y_axis_label='gam_GB' , height=350, width=350)
-figs['gamhigh'] = figure(y_axis_label=' ', height=350, width=350)
-figs['omelow'] = figure(x_axis_label='kthetarhos', y_axis_label='ome_GB' , height=350, width=350)
-figs['omehigh'] = figure(x_axis_label='kthetarhos',y_axis_label=' ',  height=350, width=350)
-gamrow = row(figs['gamlow'], figs['gamhigh'], width=700, height=350, sizing_mode='scale_width')
-omerow = row(figs['omelow'], figs['omehigh'], width=700, height=350, sizing_mode='scale_width')
+height_block =200 
+x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
+figs['effig'] = figure(title="Heat Flux", x_axis_label=xaxis_name, y_axis_label='ylab', height=2*height_block, width=2*height_block, x_range=x_range)
+figs['pffig'] = figure(title="Particle Flux", x_axis_label=xaxis_name, y_axis_label='ysab', height=2*height_block, width=2*height_block, x_range=x_range)
+figs['gamlow'] = figure(y_axis_label='gam_GB' , height=height_block, width=height_block)
+figs['gamhigh'] = figure(y_axis_label=' ', height=height_block, width=height_block)
+figs['omelow'] = figure(x_axis_label='kthetarhos', y_axis_label='ome_GB' , height=height_block, width=height_block)
+figs['omehigh'] = figure(x_axis_label='kthetarhos',y_axis_label=' ',  height=height_block, width=height_block)
+gamrow = row(figs['gamlow'], figs['gamhigh'], height=height_block, sizing_mode='scale_width')
+omerow = row(figs['omelow'], figs['omehigh'], height=height_block, sizing_mode='scale_width')
 #freqgrid = gridplot([[figs['gamlow'], figs['gamhigh']],
 #                  [figs['omelow'], figs['omehigh']]])
-freqgrid = column(gamrow, omerow, width=700, height=700, sizing_mode='scale_width')
+freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
 
-plotrow = row(figs['effig'], figs['pffig'], freqgrid, sizing_mode='scale_width', height=700, width=2100)
-sliderrow = widgetbox(children=slider_dict.values())
+plotrow = row(figs['effig'], figs['pffig'], freqgrid, Spacer(height=2*height_block), sizing_mode='scale_width', height=2*height_block)
+sliderrow = widgetbox(children=slider_dict.values(), height=height_block)
 #for name, fig in figs.items():
 #    fig.line([1,2,3],[4,5,6])
 
