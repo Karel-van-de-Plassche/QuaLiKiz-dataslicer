@@ -1,5 +1,5 @@
 """Example implementation of two double ended sliders as extension widgets"""
-from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, Function, String
+from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, Function, String, Any
 from bokeh.models import InputWidget
 from bokeh.models.callbacks import Callback
 from bokeh.core.enums import SliderCallbackPolicy
@@ -72,7 +72,7 @@ class IonRangeSlider(InputWidget):
        The `mouseup` policy is intended for scenarios in which the callback is expensive in time.
     """)
 
-    values = List(Float, help="""
+    values = List(Any, help="""
     Set up your own array of possible slider values. They could be numbers or strings. 
     If the values array is set up, min, max and step param, can no longer be changed.
     """)
