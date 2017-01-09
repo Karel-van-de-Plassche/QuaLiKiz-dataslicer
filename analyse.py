@@ -109,7 +109,15 @@ def swap_x(attr, old, new):
     #    fig.clear()
     global xaxis_name, sources, figs
     
-    xaxis_name = xaxis_slider.values[xaxis_slider.range[0]]
+    try:
+        xaxis_name = xaxis_slider.values[new[0]]
+        old_xaxis_name = xaxis_slider.values[old[0]]
+    except TypeError:
+        return
+    #slider_dict[old_xaxis_name].disable = False
+    #slider_dict[old_xaxis_name].update()
+    #slider_dict[xaxis_name].disable = True
+    #slider_dict[xaxis_name].update()
     #for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
     for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
         for column_name in sources[figname]:
@@ -122,6 +130,7 @@ def swap_x(attr, old, new):
         #x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
         figs[figname].x_range.start = float(np.min(ds[xaxis_name]))
         figs[figname].x_range.end = float(np.max(ds[xaxis_name]))
+        figs[figname].xaxis.axis_label = xaxis_name
     updater(None, None, None)
     
     #for name, slider_list in slider_dict.items():
@@ -196,6 +205,7 @@ xaxis_name = 'Ate'
 kthetarhos_cutoff = 1
 for name in scan_dims:
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round)
+#slider_dict[xaxis_name].disable = True
 
 xaxis_slider = IonRangeSlider(values=scan_dims, height=56)
 toolbar = row(widgetbox([xaxis_slider]), sizing_mode='scale_width')
@@ -207,19 +217,19 @@ freq_tools = 'save'
 
 x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
 figs = {}
-figs['effig']   = Figure(x_axis_label=xaxis_name,   y_axis_label='ylab',
+figs['effig']   = Figure(x_axis_label=xaxis_name,   y_axis_label='Energy Flux [GB]',
                         height=2*height_block, width=2*height_block,
                         tools=flux_tools, x_range=x_range)
-figs['pffig']   = Figure(x_axis_label=xaxis_name,   y_axis_label='ysab',
+figs['pffig']   = Figure(x_axis_label=xaxis_name,   y_axis_label='Particle Flux [GB]',
                         height=2*height_block, width=2*height_block,
                         tools=flux_tools, x_range=x_range)
-figs['gamlow']  = Figure(x_axis_label=' ',          y_axis_label='gam_GB',
+figs['gamlow']  = Figure(x_axis_label=' ',          y_axis_label='Growth Rates [GB]',
                         height=height_block,   width=height_block,
                         tools=freq_tools, x_range=[0, kthetarhos_cutoff])
 figs['gamhigh'] = Figure(x_axis_label=' ',          y_axis_label=' ',
                         height=height_block,   width=height_block,
                         tools=freq_tools, x_range=[kthetarhos_cutoff, float(ds['kthetarhos'].max())])
-figs['omelow']  = Figure(x_axis_label='kthetarhos', y_axis_label='ome_GB',
+figs['omelow']  = Figure(x_axis_label='kthetarhos', y_axis_label='Frequencies [GB]',
                         height=height_block,   width=height_block,
                         tools=freq_tools, x_range=[0, kthetarhos_cutoff])
 figs['omehigh'] = Figure(x_axis_label='kthetarhos', y_axis_label=' ',
@@ -296,6 +306,7 @@ for slider in slider_dict.values():
 xaxis_slider.on_change('range', swap_x)
 
 if __name__ == '__main__':
+    embed()
     show(column(plotrow, sliderrow, toolbar, sizing_mode='scale_width'))
 else:
     curdoc().add_root(column(plotrow, sliderrow, toolbar, sizing_mode='scale_width'))
