@@ -1,5 +1,5 @@
 """Example implementation of two double ended sliders as extension widgets"""
-from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, Function, String, Any
+from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, String, Any
 from bokeh.models import InputWidget
 from bokeh.models.callbacks import Callback
 from bokeh.core.enums import SliderCallbackPolicy
