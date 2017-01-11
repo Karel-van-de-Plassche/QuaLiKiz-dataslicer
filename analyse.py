@@ -23,7 +23,7 @@ from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
-sepcolor = sepcolor[9]
+from qlkANNk import QuaLiKiz4DNN
 
 
 def takespread(sequence, num, repeat=1):
@@ -38,12 +38,21 @@ def extract_plotdata(sel_dict):
     plotdata = {}
 
     for prefix in ['ef', 'pf']:
-        dict_ = {}
-        dict_['xaxis'] = slice_[xaxis_name].data
+        plotdata[prefix + 'fig'] = {}
+        xaxis = slice_[xaxis_name].data
         for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
-            dict_['ion' + str(i)] = efi.data
-        dict_['elec'] = slice_[prefix + 'e_GB'].data
-        plotdata[prefix + 'fig'] = dict_
+            plotdata[prefix + 'fig']['ion' + str(i)] = {}
+            plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
+            plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = efi.data
+            plotdata[prefix + 'fig']['nn_ion' + str(i)] = {}
+            plotdata[prefix + 'fig']['nn_ion' + str(i)]['xaxis'] = xaxis
+            plotdata[prefix + 'fig']['nn_ion' + str(i)]['yaxis'] = efi.data
+        plotdata[prefix + 'fig']['elec'] = {}
+        plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
+        plotdata[prefix + 'fig']['nn_elec'] = {}
+        plotdata[prefix + 'fig']['nn_elec']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['nn_elec']['yaxis'] = slice_[prefix + 'e_GB'].data
 
     for suff in ['low', 'high']:
         for pre in ['gam', 'ome']:
@@ -81,8 +90,8 @@ def swap_x(attr, old, new):
             sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
     for figname in ['effig', 'pffig']:
-        for column_name in sources[figname].column_names[1:]:
-            sources[name] = []
+        for column_name in sources[figname]:
+            sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
 
         figs[figname].x_range.start = float(np.min(ds[xaxis_name]))
         figs[figname].x_range.end = float(np.max(ds[xaxis_name]))
@@ -107,7 +116,8 @@ def updater(attr, old, new):
 
     plotdata = extract_plotdata(sel_dict)
     for figname in ['effig', 'pffig']:
-        sources[figname].data = plotdata[figname]
+        for column_name in plotdata[figname]:
+            sources[figname][column_name].data = plotdata[figname][column_name]
     for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
         for column_name in sources[figname]:
             if column_name in plotdata[figname]:
@@ -117,6 +127,9 @@ def updater(attr, old, new):
 
 
 ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
+ds = xr.open_dataset('/mnt/hdd/4D.nc')
+
+nn = QuaLiKiz4DNN()
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 # Create slider dict
@@ -127,13 +140,13 @@ round = CustomJS(code="""
      """)
 slider_dict = OrderedDict()
 numslider = 0
-xaxis_name = 'Ate'
+xaxis_name = scan_dims[0]
 kthetarhos_cutoff = 1
 for name in scan_dims:
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round)
 #slider_dict[xaxis_name].disable = True
 
-xaxis_slider = IonRangeSlider(values=scan_dims, height=56)
+xaxis_slider = IonRangeSlider(values=scan_dims, height=56, end=0)
 toolbar = row(widgetbox([xaxis_slider]), sizing_mode='scale_width')
 
 
@@ -171,19 +184,34 @@ slidercol1 = widgetbox(list(slider_dict.values())[:len(slider_dict)//2], height=
 slidercol2 = widgetbox(list(slider_dict.values())[len(slider_dict)//2:], height=height_block)
 sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
 
-sources = {}
 
+sepcolor = sepcolor[9]
 names_particles = ['ele'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
-dict_ = OrderedDict([('xaxis', []),
-                     ('elec', [])])
+color = OrderedDict([('elec', sepcolor[0]),
+                     ('nn_elec', sepcolor[0])])
+line_dash = OrderedDict([('elec', 'solid'),
+                         ('nn_elec', 'dashed')])
+legend = OrderedDict([('elec', 'elec'),
+                      ('nn_elec', 'nn_elec')])
+linenames = ['elec', 'nn_elec']
 for ii in range(ds.dims['nions']):
-    dict_['ion' + str(ii)] = []
+    linenames.append('ion' + str(ii))
+    linenames.append('nn_ion' + str(ii))
+    color['ion' + str(ii)] = sepcolor[ii + 1]
+    color['nn_ion' + str(ii)] = sepcolor[ii + 1]
+    line_dash['ion' + str(ii)] = 'solid'
+    line_dash['nn_ion' + str(ii)] = 'dashed'
+    legend['ion' + str(ii)] = 'Z = ' + str(ds['Zi'].data[ii])
+    legend['nn_ion' + str(ii)] = 'nn_Z = ' + str(ds['Zi'].data[ii])
 
+sources = {}
 for figname in ['effig', 'pffig']:
-    sources[figname] = ColumnDataSource(dict_)
-    for ii, column_name in enumerate(sources[figname].column_names[1:]):
-        figs[figname].scatter('xaxis', column_name, source=sources[figname], color=sepcolor[ii], legend=names_particles[ii])
-        figs[figname].line('xaxis', column_name, source=sources[figname], color=sepcolor[ii], legend=names_particles[ii])
+    sources[figname] = OrderedDict()
+    for ii, column_name in enumerate(linenames):
+        sources[figname][column_name] = ColumnDataSource({'xaxis': [],
+                                                          'yaxis': []})
+        figs[figname].scatter('xaxis', 'yaxis', source=sources[figname][column_name], color=color[column_name], legend=legend[column_name])
+        figs[figname].line('xaxis', 'yaxis', source=sources[figname][column_name], color=color[column_name], legend=legend[column_name], line_dash=line_dash[column_name])
         figs[figname].legend.location = 'top_left'
 
 max_num = 0
