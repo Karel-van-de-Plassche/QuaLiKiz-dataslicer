@@ -34,25 +34,35 @@ def takespread(sequence, num, repeat=1):
 
 
 def extract_plotdata(sel_dict):
-    slice_ = ds.sel(method='nearest', **sel_dict)
+    slice_ = ds.sel(**sel_dict)
+    xaxis = slice_[xaxis_name].data
+
+    input = {xaxis_name: xaxis}
+    for name in ['Ati', 'qx', 'smag', 'Ti_Te']:
+        if name != xaxis_name:
+            input[name] = np.full_like(xaxis, slice_[name])
+    qe_GB, qi_GB, pfe_GB = nn.get_fluxes(**input)
     plotdata = {}
+    plotdata['effig'] = {}
+    plotdata['effig']['nn_elec'] = {}
+    plotdata['effig']['nn_elec']['xaxis'] = xaxis
+    plotdata['effig']['nn_elec']['yaxis'] = qe_GB
+    plotdata['effig']['nn_ion0'] = {}
+    plotdata['effig']['nn_ion0']['xaxis'] = xaxis
+    plotdata['effig']['nn_ion0']['yaxis'] = qi_GB
+    plotdata['pffig'] = {}
+    plotdata['pffig']['nn_elec'] = {}
+    plotdata['pffig']['nn_elec']['xaxis'] = xaxis
+    plotdata['pffig']['nn_elec']['yaxis'] = pfe_GB
 
     for prefix in ['ef', 'pf']:
-        plotdata[prefix + 'fig'] = {}
-        xaxis = slice_[xaxis_name].data
         for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
             plotdata[prefix + 'fig']['ion' + str(i)] = {}
             plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
             plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = efi.data
-            plotdata[prefix + 'fig']['nn_ion' + str(i)] = {}
-            plotdata[prefix + 'fig']['nn_ion' + str(i)]['xaxis'] = xaxis
-            plotdata[prefix + 'fig']['nn_ion' + str(i)]['yaxis'] = efi.data
         plotdata[prefix + 'fig']['elec'] = {}
         plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
         plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
-        plotdata[prefix + 'fig']['nn_elec'] = {}
-        plotdata[prefix + 'fig']['nn_elec']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['nn_elec']['yaxis'] = slice_[prefix + 'e_GB'].data
 
     for suff in ['low', 'high']:
         for pre in ['gam', 'ome']:
