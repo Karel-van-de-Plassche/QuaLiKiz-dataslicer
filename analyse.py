@@ -9,7 +9,6 @@ import numpy as np
 import scipy as sc
 import os
 import time
-from cycler import cycler
 from collections import OrderedDict
 from math import ceil
 from itertools import repeat
@@ -23,7 +22,8 @@ from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
-from qlkANNk import QuaLiKiz4DNN
+#from qlkANNk import QuaLiKiz4DNN
+QuaLiKiz4DNN = None
 
 
 def takespread(sequence, num, repeat=1):
@@ -41,7 +41,10 @@ def extract_plotdata(sel_dict):
     for name in ['Ati', 'qx', 'smag', 'Ti_Te']:
         if name != xaxis_name:
             input[name] = np.full_like(xaxis, slice_[name])
-    qe_GB, qi_GB, pfe_GB = nn.get_fluxes(**input)
+    if QuaLiKiz4DNN:
+        qe_GB, qi_GB, pfe_GB = nn.get_fluxes(**input)
+    else:
+        qe_GB = qi_GB = pfe_GB = []
     plotdata = {}
     plotdata['effig'] = {}
     plotdata['effig']['nn_elec'] = {}
@@ -136,10 +139,11 @@ def updater(attr, old, new):
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
 
-ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
-ds = xr.open_dataset('/mnt/hdd/4D.nc')
+#ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
+ds = xr.open_dataset('4D.nc3')
 
-nn = QuaLiKiz4DNN()
+if QuaLiKiz4DNN:
+    nn = QuaLiKiz4DNN()
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 # Create slider dict
