@@ -144,6 +144,4 @@ ion_range_slider = IonRangeSlider(values=list(range(10)), title='Ion Range Slide
 ion_range_slider2 = IonRangeSlider(values=[0, 1e-4, 0.00999993], title='Test Slider', prettify_enabled=True, prettify=code)
 
 layout = column(plot, slider, ion_range_slider, ion_range_slider2)
-from bokeh.io import curdoc
 show(layout)
-curdoc().add_root(layout)
