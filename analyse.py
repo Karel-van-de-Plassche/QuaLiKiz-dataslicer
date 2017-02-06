@@ -23,7 +23,8 @@ from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
 #from qlkANNk import QuaLiKiz4DNN
-QuaLiKiz4DNN = None
+from run_model import QuaLiKizNDNN
+#QuaLiKiz4DNN = None
 
 
 def takespread(sequence, num, repeat=1):
@@ -38,25 +39,30 @@ def extract_plotdata(sel_dict):
     xaxis = slice_[xaxis_name].data
 
     input = {xaxis_name: xaxis}
-    for name in ['Ati', 'qx', 'smag', 'Ti_Te']:
-        if name != xaxis_name:
-            input[name] = np.full_like(xaxis, slice_[name])
-    if QuaLiKiz4DNN:
-        qe_GB, qi_GB, pfe_GB = nn.get_fluxes(**input)
-    else:
-        qe_GB = qi_GB = pfe_GB = []
-    plotdata = {}
-    plotdata['effig'] = {}
-    plotdata['effig']['nn_elec'] = {}
-    plotdata['effig']['nn_elec']['xaxis'] = xaxis
-    plotdata['effig']['nn_elec']['yaxis'] = qe_GB
-    plotdata['effig']['nn_ion0'] = {}
-    plotdata['effig']['nn_ion0']['xaxis'] = xaxis
-    plotdata['effig']['nn_ion0']['yaxis'] = qi_GB
-    plotdata['pffig'] = {}
-    plotdata['pffig']['nn_elec'] = {}
-    plotdata['pffig']['nn_elec']['xaxis'] = xaxis
-    plotdata['pffig']['nn_elec']['yaxis'] = pfe_GB
+    if nn:
+        for name in nn.feature_names:
+            if name != xaxis_name:
+                input[name] = np.full_like(xaxis, slice_[name])
+        output = nn.get_output(**input)
+        for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
+            try:
+                output[name]
+            except KeyError:
+                output[name] = np.zeros_like(output.index)
+
+            
+        plotdata = {}
+        plotdata['effig'] = {}
+        plotdata['effig']['nn_elec'] = {}
+        plotdata['effig']['nn_elec']['xaxis'] = xaxis
+        plotdata['effig']['nn_elec']['yaxis'] = output['efe_GB']
+        plotdata['effig']['nn_ion0'] = {}
+        plotdata['effig']['nn_ion0']['xaxis'] = xaxis
+        plotdata['effig']['nn_ion0']['yaxis'] = output['efi_GB']
+        plotdata['pffig'] = {}
+        plotdata['pffig']['nn_elec'] = {}
+        plotdata['pffig']['nn_elec']['xaxis'] = xaxis
+        plotdata['pffig']['nn_elec']['yaxis'] = output['pfe_GB']
 
     for prefix in ['ef', 'pf']:
         for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
@@ -139,11 +145,11 @@ def updater(attr, old, new):
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
 
-#ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
-ds = xr.open_dataset('4D.nc3')
+ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
+#ds = xr.open_dataset('4D.nc3')
 
-if QuaLiKiz4DNN:
-    nn = QuaLiKiz4DNN()
+if QuaLiKizNDNN:
+    nn = QuaLiKizNDNN.from_json('nn.json')
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 # Create slider dict
