@@ -98,6 +98,10 @@ class IonRangeSlider(InputWidget):
     Locks slider and makes it inactive.
     """)
 
+    color = String(default="", help="""
+    Color of the toolbar
+    """)
+
 
 x = [x*0.005 for x in range(2, 198)]
 y = x

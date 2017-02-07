@@ -75,6 +75,10 @@ export class IonRangeSliderView extends InputWidgetView
     @model.range = range
     @$el.find( "##{ @model.id }" ).val( range.join(' - '))
     @$el.find('.bk-slider-parent').height(@model.height)
+    if @model.color != ""
+      @$el.find('.irs-bar').css('background', @model.color)
+      @$el.find('.irs-bar-edge').css('background', @model.color)
+      @$el.find('.irs-single').css('background', @model.color)
     return @
 
 
@@ -120,4 +124,5 @@ export class IonRangeSlider extends InputWidget
       force_edges:       [ p.Bool,        false        ]
       prefix:            [ p.String,      ""           ]
       disable:			 [ p.Bool,        false        ]
+      color:			 [ p.String,      ""           ]
   }

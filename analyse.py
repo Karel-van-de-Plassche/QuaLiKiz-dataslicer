@@ -190,16 +190,17 @@ kthetarhos_cutoff_index = int(np.argwhere(np.isclose(ds['kthetarhos'].data,kthet
 call = CustomJS(code=""" var x = 1""")
 for name in scan_dims:
     end = int(ds[name].size/2)
+    color = 'green'
     if nn:
         if nn.feature_min[name] == nn.feature_max[name]:
+            color = ''
             end = int(np.argwhere(np.isclose(ds[name], nn.feature_min[name], rtol=1e-2)))
 
-    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round, end=end)
+    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round, end=end, color=color)
 #slider_dict[xaxis_name].disable = True
 
 xaxis_slider = IonRangeSlider(values=scan_dims, height=56, end=scan_dims.index(xaxis_name))
 toolbar = row(widgetbox([xaxis_slider]), sizing_mode='scale_width')
-
 
 height_block = 300
 flux_tools = 'box_zoom,pan,zoom_in,zoom_out,reset,save,hover'
