@@ -35,12 +35,18 @@ def takespread(sequence, num, repeat=1):
 
 
 def extract_plotdata(sel_dict):
+    start = time.time()
     slice_ = ds.sel(**sel_dict)
+    slice_.load()
+
+    filter = slice_.where(slice_['efe_GB'] < 60)
     xaxis = slice_[xaxis_name].data
+    ##timer('sliced at ', start)
 
     input = {xaxis_name: xaxis}
     if nn:
         for name in nn.feature_names:
+            #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
             if name != xaxis_name:
                 input[name] = np.full_like(xaxis, slice_[name])
         output = nn.get_output(**input)
@@ -51,6 +57,7 @@ def extract_plotdata(sel_dict):
                 output[name] = np.zeros_like(output.index)
 
             
+        #timer('nn eval at ', start)
         plotdata = {}
         plotdata['effig'] = {}
         plotdata['effig']['nn_elec'] = {}
@@ -64,6 +71,7 @@ def extract_plotdata(sel_dict):
         plotdata['pffig']['nn_elec']['xaxis'] = xaxis
         plotdata['pffig']['nn_elec']['yaxis'] = output['pfe_GB']
 
+        #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf']:
         for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
             plotdata[prefix + 'fig']['ion' + str(i)] = {}
@@ -72,18 +80,19 @@ def extract_plotdata(sel_dict):
         plotdata[prefix + 'fig']['elec'] = {}
         plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
         plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
+    #timer('fluxed at ', start)
 
     for suff in ['low', 'high']:
         for pre in ['gam', 'ome']:
             plotdata[pre + suff] = {}
-    for numsol in slice_['numsols'].data:
+    for numsol, __ in enumerate(slice_['numsols'].data):
         for suff in ['low', 'high']:
             for pre in ['gam', 'ome']:
                 if suff == 'low':
-                    kthetarhos = slice(None, kthetarhos_cutoff)
+                    kthetarhos = slice(None, kthetarhos_cutoff_index)
                 else:
-                    kthetarhos = slice(kthetarhos_cutoff, None)
-                subslice = slice_[pre + '_GB'].sel(numsols=numsol, kthetarhos=kthetarhos)
+                    kthetarhos = slice(kthetarhos_cutoff_index, None)
+                subslice = slice_[pre + '_GB'].isel(numsols=numsol, kthetarhos=kthetarhos)
                 subslice = subslice.where(subslice != 0)
 
                 for ii, subsubslice in enumerate(subslice):
@@ -92,6 +101,7 @@ def extract_plotdata(sel_dict):
                     plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['yaxis'] = subsubslice.data
                     plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['curval'] = np.full_like(subslice['kthetarhos'], subsubslice[xaxis_name].data)
                     plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['cursol'] = np.full_like(subslice['kthetarhos'], int(numsol))
+    #timer('freq at ', start)
     return plotdata
 
 
@@ -117,7 +127,6 @@ def swap_x(attr, old, new):
         figs[figname].xaxis.axis_label = xaxis_name
     updater(None, None, None)
 
-
 def read_sliders():
     sel_dict = {}
     for name, slider in slider_dict.items():
@@ -125,33 +134,48 @@ def read_sliders():
             sel_dict[name] = slider.values[slider.range[0]]
     return sel_dict
 
-
+def timer(msg, start):
+    print (msg, str(time.time() - start))
 def updater(attr, old, new):
+    start = time.time()
     try:
         # This will (silently) fail when the sliders are not initialized yet
         sel_dict = read_sliders()
     except TypeError:
         return
+    #timer('Read sliders ', start)
 
     plotdata = extract_plotdata(sel_dict)
+    #timer('Extracted plotdata', start)
     for figname in ['effig', 'pffig']:
         for column_name in plotdata[figname]:
             sources[figname][column_name].data = plotdata[figname][column_name]
+    #timer('wrote flux sources', start)
     for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
         for column_name in sources[figname]:
             if column_name in plotdata[figname]:
                 sources[figname][column_name].data = plotdata[figname][column_name]
             else:
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
+    #timer('wrote freq sources', start)
 
 
 ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
+ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
 if QuaLiKizNDNN:
     nn = QuaLiKizNDNN.from_json('nn.json')
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
+dimx = np.product(list(ds[scan_dims].dims.values()))
+#def rising(x):
+#    x = x[~np.isnan(x)]
+#    return np.any(np.greater(np.diff(x), 0))
+#ds['ome_GB'][ind] = ds['ome_GB'][ind].where(rising(ds['ome_GB'][ind].max(dim='numsols')))
+
+
+
 # Create slider dict
 round = CustomJS(code="""
          var f = cb_obj
@@ -162,6 +186,8 @@ slider_dict = OrderedDict()
 numslider = 0
 xaxis_name = scan_dims[0]
 kthetarhos_cutoff = 1
+kthetarhos_cutoff_index = int(np.argwhere(np.isclose(ds['kthetarhos'].data,kthetarhos_cutoff)))
+call = CustomJS(code=""" var x = 1""")
 for name in scan_dims:
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round)
 #slider_dict[xaxis_name].disable = True
