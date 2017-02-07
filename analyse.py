@@ -39,7 +39,7 @@ def extract_plotdata(sel_dict):
     slice_ = ds.sel(**sel_dict)
     slice_.load()
 
-    filter = slice_.where(slice_['efe_GB'] < 60)
+    slice_ = slice_.where(slice_['efe_GB'] < 60)
     xaxis = slice_[xaxis_name].data
     ##timer('sliced at ', start)
 
@@ -184,15 +184,20 @@ round = CustomJS(code="""
      """)
 slider_dict = OrderedDict()
 numslider = 0
-xaxis_name = scan_dims[0]
+xaxis_name = scan_dims[1]
 kthetarhos_cutoff = 1
 kthetarhos_cutoff_index = int(np.argwhere(np.isclose(ds['kthetarhos'].data,kthetarhos_cutoff)))
 call = CustomJS(code=""" var x = 1""")
 for name in scan_dims:
-    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round)
+    end = int(ds[name].size/2)
+    if nn:
+        if nn.feature_min[name] == nn.feature_max[name]:
+            end = int(np.argwhere(np.isclose(ds[name], nn.feature_min[name], rtol=1e-2)))
+
+    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(), prefix=name + " = ", height=56, prettify=round, end=end)
 #slider_dict[xaxis_name].disable = True
 
-xaxis_slider = IonRangeSlider(values=scan_dims, height=56, end=0)
+xaxis_slider = IonRangeSlider(values=scan_dims, height=56, end=scan_dims.index(xaxis_name))
 toolbar = row(widgetbox([xaxis_slider]), sizing_mode='scale_width')
 
 
