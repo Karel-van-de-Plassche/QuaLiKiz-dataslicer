@@ -3,7 +3,7 @@ from bokeh.core.properties import (Float, Instance, Tuple, Bool, Enum,
                                    List, String, Any)
 from bokeh.models import InputWidget
 from bokeh.models.callbacks import Callback
-from bokeh.core.enums import SliderCallbackPolicy
+from bokeh.core.enums import SliderCallbackPolicy, enumeration
 
 class IonRangeSlider(InputWidget):
     # The special class attribute ``__implementation__`` should contain a string
@@ -27,8 +27,9 @@ class IonRangeSlider(InputWidget):
     #
     #    http://bokeh.pydata.org/en/latest/docs/reference/core.html#bokeh-core-properties
 
-    disable = Bool(default=True, help="""
-    Enable or disable the slider.
+    slider_type = Enum(enumeration('single', 'double'), default='single', help="""
+    Choose slider type, could be single - for one handle, or double for
+    two handles.
     """)
 
     grid = Bool(default=True, help="""

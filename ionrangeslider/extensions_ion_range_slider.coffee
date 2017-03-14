@@ -39,37 +39,45 @@ export class IonRangeSliderView extends InputWidgetView
     # contents of the <div>, based on the current slider value.
     super()
     # Set up parameters
-    max = @model.end
-    min = @model.start
+    slider_type = @model.slider_type
     grid = @model.grid
     disable = @model.disabled
-    range = @model.range or [max, min]
-    [from, to] = range
-    step = @model.step or ((max - min)/50)
-    values = @model.values
     prettify_enabled = @model.prettify_enabled
     force_edges = @model.force_edges
     prefix = @model.prefix
     opts = {
-      type: "single",
+      type: slider_type,
       grid: grid,
-      min: min,
-      max: max,
-      from: from,
-      to: to,
-      step: step,
       disable: disable,
       onChange: @slide,
       onFinish: @slidestop,
-      values: values,
       prettify_enabled: prettify_enabled,
       prefix: prefix,
-      disable: disable
+      disable: disable,
+      force_edges: force_edges
     }
 
     if @model.prettify
       opts['prettify'] = @prettify
+    if @model.values
+      opts['values'] = @model.values
+      min = 0
+      max = @model.values.length
+    else
+      max = @model.end
+      min = @model.start
+      step = @model.step or ((max - min)/50)
+      opts['max'] = max
+      opts['min'] = min
+      opts['step'] = step
+    range = @model.range or [min, max]
+    opts['range'] = range
+    [from, to] = range
+    opts['from'] = from
+    opts['to'] = to
+
     input = @$el.find('.slider')[0]
+
     slider = jQuery(input).ionRangeSlider(opts)
     range = [from, to]
     @model.range = range
@@ -111,6 +119,7 @@ export class IonRangeSlider extends InputWidget
   # p.String in the JS implementation. Where the JS type system is not yet
   # as rich, you can use p.Any as a "wildcard" property type.
   @define {
+      slider_type:       [ p.String,      "single"     ]
       range:             [ p.Any,                      ]
       start:             [ p.Number,      0            ]
       end:               [ p.Number,      1            ]
