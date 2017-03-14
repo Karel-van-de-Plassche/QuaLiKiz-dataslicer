@@ -43,12 +43,13 @@ def extract_plotdata(sel_dict):
     xaxis = slice_[xaxis_name].data
     ##timer('sliced at ', start)
 
-    input = {xaxis_name: xaxis}
     if nn:
+        nn_xaxis = np.linspace(xaxis[0], xaxis[-1], 60)
+        input = {xaxis_name: nn_xaxis}
         for name in nn.feature_names:
             #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
             if name != xaxis_name:
-                input[name] = np.full_like(xaxis, slice_[name])
+                input[name] = np.full_like(nn_xaxis, slice_[name])
         output = nn.get_output(**input)
         for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
             try:
@@ -61,14 +62,14 @@ def extract_plotdata(sel_dict):
         plotdata = {}
         plotdata['effig'] = {}
         plotdata['effig']['nn_elec'] = {}
-        plotdata['effig']['nn_elec']['xaxis'] = xaxis
+        plotdata['effig']['nn_elec']['xaxis'] = nn_xaxis
         plotdata['effig']['nn_elec']['yaxis'] = output['efe_GB']
         plotdata['effig']['nn_ion0'] = {}
-        plotdata['effig']['nn_ion0']['xaxis'] = xaxis
+        plotdata['effig']['nn_ion0']['xaxis'] = nn_xaxis
         plotdata['effig']['nn_ion0']['yaxis'] = output['efi_GB']
         plotdata['pffig'] = {}
         plotdata['pffig']['nn_elec'] = {}
-        plotdata['pffig']['nn_elec']['xaxis'] = xaxis
+        plotdata['pffig']['nn_elec']['xaxis'] = nn_xaxis
         plotdata['pffig']['nn_elec']['yaxis'] = output['pfe_GB']
 
         #timer('nn dictized at ', start)
@@ -160,7 +161,8 @@ def updater(attr, old, new):
     #timer('wrote freq sources', start)
 
 
-ds = xr.open_dataset('/mnt/hdd/Zeff_combined.nc')
+ds = xr.open_dataset('Zeffcombo.nc.1')
+print('ds loaded')
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
@@ -262,8 +264,10 @@ for figname in ['effig', 'pffig']:
     for ii, column_name in enumerate(linenames):
         sources[figname][column_name] = ColumnDataSource({'xaxis': [],
                                                           'yaxis': []})
-        figs[figname].scatter('xaxis', 'yaxis', source=sources[figname][column_name], color=color[column_name], legend=legend[column_name])
-        figs[figname].line('xaxis', 'yaxis', source=sources[figname][column_name], color=color[column_name], legend=legend[column_name], line_dash=line_dash[column_name])
+        if 'nn' in column_name:
+            figs[figname].line('xaxis', 'yaxis', source=sources[figname][column_name], color=color[column_name], legend=legend[column_name], line_dash=line_dash[column_name])
+        else:
+            figs[figname].scatter('xaxis', 'yaxis', source=sources[figname][column_name], color=color[column_name], legend=legend[column_name], size=6)
         figs[figname].legend.location = 'top_left'
 
 max_num = 0
