@@ -1,14 +1,9 @@
 """Example implementation of two double ended sliders as extension widgets"""
-from bokeh.core.properties import Float, Instance, Tuple, Bool, Enum, List, String, Any
+from bokeh.core.properties import (Float, Instance, Tuple, Bool, Enum,
+                                   List, String, Any)
 from bokeh.models import InputWidget
 from bokeh.models.callbacks import Callback
 from bokeh.core.enums import SliderCallbackPolicy
-
-from bokeh.layouts import column
-from bokeh.models import Slider, CustomJS, ColumnDataSource
-from bokeh.io import show
-from bokeh.plotting import Figure
-
 
 class IonRangeSlider(InputWidget):
     # The special class attribute ``__implementation__`` should contain a string
@@ -58,23 +53,31 @@ class IonRangeSlider(InputWidget):
 
     callback = Instance(Callback, help="""
     A callback to run in the browser whenever the current Slider value changes.
+    Note that this callback does NOT run on the server. This means only
+    CustomJS can be run.
     """)
 
     callback_throttle = Float(default=200, help="""
-    Number of microseconds to pause between callback calls as the slider is moved.
+    Number of microseconds to pause between callback calls as the slider is
+    moved.
     """)
 
     callback_policy = Enum(SliderCallbackPolicy, default="throttle", help="""
-    When the callback is initiated. This parameter can take on only one of three options:
-       "continuous": the callback will be executed immediately for each movement of the slider
-       "throttle": the callback will be executed at most every ``callback_throttle`` milliseconds.
-       "mouseup": the callback will be executed only once when the slider is released.
-       The `mouseup` policy is intended for scenarios in which the callback is expensive in time.
+    When the callback is initiated. This parameter can take on only one of
+    three options:
+       "continuous": The callback will be executed immediately for each
+                     movement of the slider
+       "throttle":   The callback will be executed at most every
+                     ``callback_throttle`` milliseconds.
+       "mouseup":    The callback will be executed only once when the slider
+                     is released. The `mouseup` policy is intended for
+                     scenarios in which the callback is expensive in time.
     """)
 
     values = List(Any, help="""
-    Set up your own array of possible slider values. They could be numbers or strings. 
-    If the values array is set up, min, max and step param, can no longer be changed.
+    Set up your own array of possible slider values. They could be numbers
+    or strings. If the values array is set up, min, max and step param,
+    can no longer be changed.
     """)
 
     prettify_enabled = Bool(default=True, help="""
@@ -82,8 +85,9 @@ class IonRangeSlider(InputWidget):
     """)
 
     prettify = Instance(Callback, help="""
-    Set up your own prettify function. Can be anything. For example, you can set up unix
-    time as slider values and than transform them to cool looking dates.
+    Set up your own prettify function. Can be anything. For example, you can
+    set up unix time as slider values and than transform them to cool looking
+    dates.
     """)
 
     force_edges = Bool(default=False, help="""
@@ -99,53 +103,5 @@ class IonRangeSlider(InputWidget):
     """)
 
     color = String(default="", help="""
-    Color of the toolbar
+    Color of the toolbar.
     """)
-
-
-x = [x*0.005 for x in range(2, 198)]
-y = x
-
-source = ColumnDataSource(data=dict(x=x, y=y))
-
-plot = Figure(plot_width=400, plot_height=400)
-plot.line('x', 'y', source=source, line_width=3, line_alpha=0.6, color='#ed5565')
-
-callback_single = CustomJS(args=dict(source=source), code="""
-        var data = source.data;
-        var f = cb_obj.value
-        x = data['x']
-        y = data['y']
-        for (i = 0; i < x.length; i++) {
-            y[i] = Math.pow(x[i], f)
-        }
-        source.trigger('change');
-    """)
-
-
-callback_ion = CustomJS(args=dict(source=source), code="""
-        var data = source.data;
-        var f = cb_obj.range
-        x = data['x']
-        y = data['y']
-        pow = (Math.log(y[100])/Math.log(x[100]))
-        console.log(pow)
-        delta = (f[1]-f[0])/x.length
-        for (i = 0; i < x.length; i++) {
-            x[i] = delta*i + f[0]
-            y[i] = Math.pow(x[i], pow)
-        }
-        source.trigger('change');
-    """)
-
-code = CustomJS(code="""
-         var f = cb_obj
-         f = Number(f.toPrecision(2))
-         return f
-     """)
-slider = Slider(start=0, end=5, step=0.1, value=1, title="Bokeh Slider - Power", callback=callback_single)
-ion_range_slider = IonRangeSlider(values=list(range(10)), title='Ion Range Slider - Range', callback=callback_ion, callback_policy='continuous')
-ion_range_slider2 = IonRangeSlider(values=[0, 1e-4, 0.00999993], title='Test Slider', prettify_enabled=True, prettify=code)
-
-layout = column(plot, slider, ion_range_slider, ion_range_slider2)
-show(layout)
