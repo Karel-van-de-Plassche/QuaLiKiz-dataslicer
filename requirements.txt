@@ -1,6 +1,0 @@
-bokeh
-xarray
-pandas
-numpy
-scipy
-IPython
