@@ -23,8 +23,11 @@ from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
 #from qlkANNk import QuaLiKiz4DNN
-from run_model import QuaLiKizNDNN
-QuaLiKizNDNN = None
+try:
+    from run_model import QuaLiKizNDNN
+    plot_nn = True
+except ModuleNotFoundError:
+    plot_nn = False
 
 
 def takespread(sequence, num, repeat=1):
@@ -60,46 +63,51 @@ def extract_plotdata(sel_dict):
 
             
         #timer('nn eval at ', start)
-        plotdata['effig']['nn_elec'] = {}
-        plotdata['effig']['nn_elec']['xaxis'] = nn_xaxis
-        plotdata['effig']['nn_elec']['yaxis'] = output['efe_GB']
-        plotdata['effig']['nn_ion0'] = {}
-        plotdata['effig']['nn_ion0']['xaxis'] = nn_xaxis
-        plotdata['effig']['nn_ion0']['yaxis'] = output['efi_GB']
-        plotdata['pffig']['nn_elec'] = {}
-        plotdata['pffig']['nn_elec']['xaxis'] = nn_xaxis
-        plotdata['pffig']['nn_elec']['yaxis'] = output['pfe_GB']
+        if plot_ef:
+            plotdata['effig']['nn_elec'] = {}
+            plotdata['effig']['nn_elec']['xaxis'] = nn_xaxis
+            plotdata['effig']['nn_elec']['yaxis'] = output['efe_GB']
+            plotdata['effig']['nn_ion0'] = {}
+            plotdata['effig']['nn_ion0']['xaxis'] = nn_xaxis
+            plotdata['effig']['nn_ion0']['yaxis'] = output['efi_GB']
+        if plot_pf:
+            plotdata['pffig']['nn_elec'] = {}
+            plotdata['pffig']['nn_elec']['xaxis'] = nn_xaxis
+            plotdata['pffig']['nn_elec']['yaxis'] = output['pfe_GB']
 
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf']:
-        for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
-            plotdata[prefix + 'fig']['ion' + str(i)] = {}
-            plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
-            plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = efi.data
-        plotdata[prefix + 'fig']['elec'] = {}
-        plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
+        if prefix + 'fig' in figs:
+            for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
+                plotdata[prefix + 'fig']['ion' + str(i)] = {}
+                plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
+                plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = efi.data
+            plotdata[prefix + 'fig']['elec'] = {}
+            plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
+            plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
     #timer('fluxed at ', start)
 
-    for suff in ['low', 'high']:
-        for pre in ['gam', 'ome']:
-            plotdata[pre + suff] = {}
-    for numsol, __ in enumerate(slice_['numsols'].data):
+    #if all([fig in figs for fig in ['gamlow', 'gamhigh', 'omelow', 'omehigh']]):
+    if plot_freq:
         for suff in ['low', 'high']:
             for pre in ['gam', 'ome']:
-                if suff == 'low':
-                    kthetarhos = slice(None, kthetarhos_cutoff_index)
-                else:
-                    kthetarhos = slice(kthetarhos_cutoff_index, None)
-                subslice = slice_[pre + '_GB'].isel(numsols=numsol, kthetarhos=kthetarhos)
-                subslice = subslice.where(subslice != 0)
+                plotdata[pre + suff] = {}
+        for numsol, __ in enumerate(slice_['numsols'].data):
+            for suff in ['low', 'high']:
+                for pre in ['gam', 'ome']:
+                    if suff == 'low':
+                        kthetarhos = slice(None, kthetarhos_cutoff_index)
+                    else:
+                        kthetarhos = slice(kthetarhos_cutoff_index, None)
+                    subslice = slice_[pre + '_GB'].isel(numsols=numsol, kthetarhos=kthetarhos)
+                    subslice = subslice.where(subslice != 0)
 
-                for ii, subsubslice in enumerate(subslice):
-                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))] = {}
-                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['xaxis'] = subslice['kthetarhos'].data
-                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['yaxis'] = subsubslice.data
-                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['curval'] = np.full_like(subslice['kthetarhos'], subsubslice[xaxis_name].data)
-                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['cursol'] = np.full_like(subslice['kthetarhos'], int(numsol))
+                    for ii, subsubslice in enumerate(subslice):
+                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))] = {}
+                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['xaxis'] = subslice['kthetarhos'].data
+                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['yaxis'] = subsubslice.data
+                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['curval'] = np.full_like(subslice['kthetarhos'], subsubslice[xaxis_name].data)
+                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['cursol'] = np.full_like(subslice['kthetarhos'], int(numsol))
     #timer('freq at ', start)
     return plotdata
 
@@ -117,12 +125,13 @@ def swap_x(attr, old, new):
             sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
     for figname in ['effig', 'pffig']:
-        for column_name in sources[figname]:
-            sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
+        if figname in figs:
+            for column_name in sources[figname]:
+                sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
 
-        figs[figname].x_range.start = float(np.min(ds[xaxis_name]))
-        figs[figname].x_range.end = float(np.max(ds[xaxis_name]))
-        figs[figname].xaxis.axis_label = xaxis_name
+            figs[figname].x_range.start = float(np.min(ds[xaxis_name]))
+            figs[figname].x_range.end = float(np.max(ds[xaxis_name]))
+            figs[figname].xaxis.axis_label = xaxis_name
     updater(None, None, None)
 
 def read_sliders():
@@ -147,15 +156,17 @@ def updater(attr, old, new):
     plotdata = extract_plotdata(sel_dict)
     #timer('Extracted plotdata', start)
     for figname in ['effig', 'pffig']:
-        for column_name in plotdata[figname]:
-            sources[figname][column_name].data = plotdata[figname][column_name]
-    #timer('wrote flux sources', start)
-    for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
-        for column_name in sources[figname]:
-            if column_name in plotdata[figname]:
+        if figname in figs:
+            for column_name in plotdata[figname]:
                 sources[figname][column_name].data = plotdata[figname][column_name]
-            else:
-                sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
+    #timer('wrote flux sources', start)
+    if plot_freq:
+        for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
+            for column_name in sources[figname]:
+                if column_name in plotdata[figname]:
+                    sources[figname][column_name].data = plotdata[figname][column_name]
+                else:
+                    sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
     #timer('wrote freq sources', start)
 def get_nn_scan_dims(nn, scan_dims):
     nn_scan_dims = []
@@ -173,10 +184,11 @@ ds = xr.open_dataset('Zeffcombo.nc.1')
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
-if QuaLiKizNDNN:
-    plot_nn = True
-else:
-    plot_nn = False
+plot_nn = plot_nn and True
+plot_freq = True
+plot_ef = True
+plot_pf = True
+
 if plot_nn:
     nn = QuaLiKizNDNN.from_json('nn.json')
 
@@ -228,54 +240,62 @@ toolbar = row(widgetbox([xaxis_slider]), sizing_mode='scale_width')
 ############################################################
 # Create figures                                           #
 ############################################################
-hover = HoverTool()
-hover.tooltips = [('x,y', '(@xaxis, @yaxis)')]
-hover2 = HoverTool()
-hover2.tooltips = [('x,y', '(@xaxis, @yaxis)')]
 flux_tools = ['box_zoom,pan,zoom_in,zoom_out,reset,save']
 
 x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
 figs = {}
+plots = []
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
-figs['effig']   = Figure(x_axis_label=xaxis_name,
-                         y_axis_label='Energy Flux [GB]',
-                         height=2*height_block, width=2*height_block,
-                         tools=flux_tools+ [hover], x_range=x_range)
-figs['pffig']   = Figure(x_axis_label=xaxis_name,
-                         y_axis_label='Particle Flux [GB]',
-                         height=2*height_block, width=2*height_block,
-                         tools=flux_tools + [hover2], x_range=x_range)
+if plot_ef:
+    figs['effig']   = Figure(x_axis_label=xaxis_name,
+                             y_axis_label='Energy Flux [GB]',
+                             height=2*height_block, width=2*height_block,
+                             tools=flux_tools, x_range=x_range)
+    plots.append(figs['effig'])
+if plot_pf:
+    figs['pffig']   = Figure(x_axis_label=xaxis_name,
+                             y_axis_label='Particle Flux [GB]',
+                             height=2*height_block, width=2*height_block,
+                             tools=flux_tools, x_range=x_range)
+    plots.append(figs['pffig'])
 
+for fig in figs.values():
+    hover = HoverTool()
+    hover.tooltips = [('x,y', '(@xaxis, @yaxis)')]
+    fig.add_tools(hover)
 # Define the frequency-like plots (e.g. kthetarhos at the x-axis)
-freq_tools = 'save'
-kthetarhos_cutoff = 1
-kthetarhos_cutoff_index = int(np.argwhere(
-    np.isclose(ds['kthetarhos'].data, kthetarhos_cutoff)))
-figs['gamlow']  = Figure(x_axis_label=' ',
-                         y_axis_label='Growth Rates [GB]',
-                         height=height_block, width=height_block,
-                         tools=freq_tools, x_range=[0, kthetarhos_cutoff])
-figs['gamhigh'] = Figure(x_axis_label=' ',
-                         y_axis_label=' ',
-                         height=height_block, width=height_block,
-                         tools=freq_tools, x_range=[kthetarhos_cutoff,
-                                                    float(ds['kthetarhos'].max())])
-figs['omelow']  = Figure(x_axis_label='kthetarhos',
-                         y_axis_label='Frequencies [GB]',
-                         height=height_block,   width=height_block,
-                         tools=freq_tools, x_range=[0, kthetarhos_cutoff])
-figs['omehigh'] = Figure(x_axis_label='kthetarhos',
-                         y_axis_label=' ',
-                         height=height_block,   width=height_block,
-                         tools=freq_tools, x_range=[kthetarhos_cutoff,
-                                                    float(ds['kthetarhos'].max())])
-gamrow = row(figs['gamlow'], figs['gamhigh'],
-             height=height_block, width=height_block, sizing_mode='scale_width')
-omerow = row(figs['omelow'], figs['omehigh'],
-             height=height_block, width=height_block, sizing_mode='scale_width')
-freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
+if plot_freq:
+    freq_tools = 'save'
+    kthetarhos_cutoff = 1
+    kthetarhos_cutoff_index = int(np.argwhere(
+        np.isclose(ds['kthetarhos'].data, kthetarhos_cutoff)))
+    figs['gamlow']  = Figure(x_axis_label=' ',
+                             y_axis_label='Growth Rates [GB]',
+                             height=height_block, width=height_block,
+                             tools=freq_tools, x_range=[0, kthetarhos_cutoff])
+    figs['gamhigh'] = Figure(x_axis_label=' ',
+                             y_axis_label=' ',
+                             height=height_block, width=height_block,
+                             tools=freq_tools, x_range=[kthetarhos_cutoff,
+                                                        float(ds['kthetarhos'].max())])
+    figs['omelow']  = Figure(x_axis_label='kthetarhos',
+                             y_axis_label='Frequencies [GB]',
+                             height=height_block,   width=height_block,
+                             tools=freq_tools, x_range=[0, kthetarhos_cutoff])
+    figs['omehigh'] = Figure(x_axis_label='kthetarhos',
+                             y_axis_label=' ',
+                             height=height_block,   width=height_block,
+                             tools=freq_tools, x_range=[kthetarhos_cutoff,
+                                                        float(ds['kthetarhos'].max())])
+    gamrow = row(figs['gamlow'], figs['gamhigh'],
+                 height=height_block, width=height_block, sizing_mode='scale_width')
+    omerow = row(figs['omelow'], figs['omehigh'],
+                 height=height_block, width=height_block, sizing_mode='scale_width')
+    freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
+    plots.append(freqgrid)
 
-plotrow = row(figs['effig'], figs['pffig'], freqgrid,
+
+plotrow = row(plots,
               sizing_mode='scale_width', height=2*height_block)
 
 ############################################################
@@ -309,57 +329,59 @@ for ii in range(ds.dims['nions']):
 sources = {}
 # link data sources to figures
 for figname in ['effig', 'pffig']:
-    sources[figname] = OrderedDict()
-    for ii, column_name in enumerate(linenames):
-        sources[figname][column_name] = ColumnDataSource({'xaxis': [],
-                                                          'yaxis': []})
-        if 'nn' in column_name:
-            if plot_nn:
-                figs[figname].line('xaxis', 'yaxis',
-                                   source=sources[figname][column_name],
-                                   color=color[column_name],
-                                   legend=legend[column_name],
-                                   line_dash=line_dash[column_name])
-        else:
-            figs[figname].scatter('xaxis', 'yaxis',
-                                  source=sources[figname][column_name],
-                                  color=color[column_name],
-                                  legend=legend[column_name],
-                                  size=6)
-    figs[figname].legend.location = 'top_left'
+    if figname in figs:
+        sources[figname] = OrderedDict()
+        for ii, column_name in enumerate(linenames):
+            sources[figname][column_name] = ColumnDataSource({'xaxis': [],
+                                                              'yaxis': []})
+            if 'nn' in column_name:
+                if plot_nn:
+                    figs[figname].line('xaxis', 'yaxis',
+                                       source=sources[figname][column_name],
+                                       color=color[column_name],
+                                       legend=legend[column_name],
+                                       line_dash=line_dash[column_name])
+            else:
+                figs[figname].scatter('xaxis', 'yaxis',
+                                      source=sources[figname][column_name],
+                                      color=color[column_name],
+                                      legend=legend[column_name],
+                                      size=6)
+        figs[figname].legend.location = 'top_left'
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
 ############################################################
 # Find the maximum size of dims to define plot colors
-max_dim_size = 0
-for scan_dim in scan_dims:
-    num = ds.dims[scan_dim]
-    if num > max_dim_size:
-        max_dim_size = num
+if plot_freq:
+    max_dim_size = 0
+    for scan_dim in scan_dims:
+        num = ds.dims[scan_dim]
+        if num > max_dim_size:
+            max_dim_size = num
 
-linenames = []
-for ii in range(max_dim_size):
-    for jj in range(ds.dims['numsols']):
-        linenames.append('dim' + str(ii) + 'sol' + str(jj))
+    linenames = []
+    for ii in range(max_dim_size):
+        for jj in range(ds.dims['numsols']):
+            linenames.append('dim' + str(ii) + 'sol' + str(jj))
 
-renderers = []
-for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
-    seqcolor = takespread(Plasma256, max_dim_size,
-                          repeat=int(ds.dims['numsols']))
-    sources[figname] = OrderedDict()
-    for color, column_name in zip(seqcolor, linenames):
-        source = sources[figname][column_name] = ColumnDataSource({'xaxis': [],
-                                                                   'yaxis': [],
-                                                                   'curval': [],
-                                                                   'cursol': []})
-        opts = dict(source=source, color=color, alpha=.5,
-                    name=column_name, hover_color=color)
-        figs[figname].scatter('xaxis', 'yaxis', **opts)
-        figs[figname].line('xaxis', 'yaxis', **opts)
-    figs[figname].add_tools(HoverTool(tooltips=OrderedDict([('val', '@curval'),
-                                                            ('sol', '@cursol')]
-                                                          )))
+    renderers = []
+    for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
+        seqcolor = takespread(Plasma256, max_dim_size,
+                              repeat=int(ds.dims['numsols']))
+        sources[figname] = OrderedDict()
+        for color, column_name in zip(seqcolor, linenames):
+            source = sources[figname][column_name] = ColumnDataSource({'xaxis': [],
+                                                                       'yaxis': [],
+                                                                       'curval': [],
+                                                                       'cursol': []})
+            opts = dict(source=source, color=color, alpha=.5,
+                        name=column_name, hover_color=color)
+            figs[figname].scatter('xaxis', 'yaxis', **opts)
+            figs[figname].line('xaxis', 'yaxis', **opts)
+        figs[figname].add_tools(HoverTool(tooltips=OrderedDict([('val', '@curval'),
+                                                                ('sol', '@cursol')]
+                                                              )))
 
 layout = column(plotrow, sliderrow, toolbar, sizing_mode='scale_width')
 if __name__ == '__main__':
