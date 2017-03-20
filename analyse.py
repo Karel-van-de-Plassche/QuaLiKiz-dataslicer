@@ -22,13 +22,16 @@ from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, CustomJS
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
-#from qlkANNk import QuaLiKiz4DNN
 try:
     from run_model import QuaLiKizNDNN
-    plot_nn = True
 except ModuleNotFoundError:
     plot_nn = False
-
+else:
+    try:
+        import mega_nn
+    except:
+        print('No mega NN')
+    plot_nn = True
 
 def takespread(sequence, num, repeat=1):
     length = float(len(sequence))
@@ -42,6 +45,7 @@ def extract_plotdata(sel_dict):
     slice_.load()
 
     slice_ = slice_.where(slice_['efe_GB'] < 60)
+    slice_ = slice_.where(slice_['efi_GB'] < 60)
     xaxis = slice_[xaxis_name].data
     plotdata = {}
     for prefix in ['ef', 'pf', 'pinch']:
@@ -54,7 +58,7 @@ def extract_plotdata(sel_dict):
             #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
             if name != xaxis_name:
                 input[name] = np.full_like(nn_xaxis, slice_[name])
-        output = nn.get_output(**input)
+        output = nn.get_outputs(**input)
         for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
             try:
                 output[name]
@@ -200,7 +204,8 @@ plot_pf = True
 plot_pinch = True
 
 if plot_nn:
-    nn = QuaLiKizNDNN.from_json('nn.json')
+    #nn = QuaLiKizNDNN.from_json('nn.json')
+    nn = mega_nn.nn
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 
