@@ -44,7 +44,7 @@ def extract_plotdata(sel_dict):
     slice_ = slice_.where(slice_['efe_GB'] < 60)
     xaxis = slice_[xaxis_name].data
     plotdata = {}
-    for prefix in ['ef', 'pf']:
+    for prefix in ['ef', 'pf', 'pinch']:
         plotdata[prefix + 'fig'] = {}
 
     if plot_nn:
@@ -85,6 +85,15 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['elec'] = {}
             plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
             plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
+    prefix = 'pinch'
+    if plot_pinch:
+        for i, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
+            plotdata[prefix + 'fig']['ion' + str(i)] = {}
+            plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
+            plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = vti.data + vci.data
+        plotdata[prefix + 'fig']['elec'] = {}
+        plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['elec']['yaxis'] = slice_['vte_GB'].data + slice_['vte_GB'].data
     #timer('fluxed at ', start)
 
     #if all([fig in figs for fig in ['gamlow', 'gamhigh', 'omelow', 'omehigh']]):
@@ -124,7 +133,7 @@ def swap_x(attr, old, new):
         for column_name in sources[figname]:
             sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
-    for figname in ['effig', 'pffig']:
+    for figname in ['effig', 'pffig', 'pinchfig']:
         if figname in figs:
             for column_name in sources[figname]:
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
@@ -155,7 +164,7 @@ def updater(attr, old, new):
 
     plotdata = extract_plotdata(sel_dict)
     #timer('Extracted plotdata', start)
-    for figname in ['effig', 'pffig']:
+    for figname in ['effig', 'pffig', 'pinchfig']:
         if figname in figs:
             for column_name in plotdata[figname]:
                 sources[figname][column_name].data = plotdata[figname][column_name]
@@ -185,9 +194,10 @@ ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
-plot_freq = True
+plot_freq = False
 plot_ef = True
 plot_pf = True
+plot_pinch = True
 
 if plot_nn:
     nn = QuaLiKizNDNN.from_json('nn.json')
@@ -244,20 +254,22 @@ flux_tools = ['box_zoom,pan,zoom_in,zoom_out,reset,save']
 
 x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
 figs = {}
-plots = []
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
 if plot_ef:
     figs['effig']   = Figure(x_axis_label=xaxis_name,
                              y_axis_label='Energy Flux [GB]',
                              height=2*height_block, width=2*height_block,
                              tools=flux_tools, x_range=x_range)
-    plots.append(figs['effig'])
 if plot_pf:
     figs['pffig']   = Figure(x_axis_label=xaxis_name,
                              y_axis_label='Particle Flux [GB]',
                              height=2*height_block, width=2*height_block,
                              tools=flux_tools, x_range=x_range)
-    plots.append(figs['pffig'])
+if plot_pinch:
+    figs['pinchfig']   = Figure(x_axis_label=xaxis_name,
+                             y_axis_label='Particle Pinch [GB]',
+                             height=2*height_block, width=2*height_block,
+                             tools=flux_tools, x_range=x_range)
 
 for fig in figs.values():
     hover = HoverTool()
@@ -292,10 +304,9 @@ if plot_freq:
     omerow = row(figs['omelow'], figs['omehigh'],
                  height=height_block, width=height_block, sizing_mode='scale_width')
     freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
-    plots.append(freqgrid)
 
 
-plotrow = row(plots,
+plotrow = row(list(figs.values()),
               sizing_mode='scale_width', height=2*height_block)
 
 ############################################################
@@ -328,7 +339,7 @@ for ii in range(ds.dims['nions']):
 
 sources = {}
 # link data sources to figures
-for figname in ['effig', 'pffig']:
+for figname in ['effig', 'pffig', 'pinchfig']:
     if figname in figs:
         sources[figname] = OrderedDict()
         for ii, column_name in enumerate(linenames):
@@ -386,6 +397,6 @@ if plot_freq:
 layout = column(plotrow, sliderrow, toolbar, sizing_mode='scale_width')
 if __name__ == '__main__':
     embed()
-    show(layout)
+    #show(layout)
 else:
     curdoc().add_root(layout)
