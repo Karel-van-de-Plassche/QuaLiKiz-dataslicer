@@ -48,7 +48,7 @@ def extract_plotdata(sel_dict):
     slice_ = slice_.where(slice_['efi_GB'] < 60)
     xaxis = slice_[xaxis_name].data
     plotdata = {}
-    for prefix in ['ef', 'pf', 'pinch']:
+    for prefix in ['ef', 'pf', 'df', 'pinch']:
         plotdata[prefix + 'fig'] = {}
 
     if plot_nn:
@@ -68,19 +68,32 @@ def extract_plotdata(sel_dict):
             
         #timer('nn eval at ', start)
         if plot_ef:
-            plotdata['effig']['nn_elec'] = {}
-            plotdata['effig']['nn_elec']['xaxis'] = nn_xaxis
-            plotdata['effig']['nn_elec']['yaxis'] = output['efe_GB']
-            plotdata['effig']['nn_ion0'] = {}
-            plotdata['effig']['nn_ion0']['xaxis'] = nn_xaxis
-            plotdata['effig']['nn_ion0']['yaxis'] = output['efi_GB']
+            prefix = 'ef'
+            plotdata[prefix + 'fig']['nn_elec'] = {}
+            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB']
+            plotdata[prefix + 'fig']['nn_ion0'] = {}
+            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
         if plot_pf:
-            plotdata['pffig']['nn_elec'] = {}
-            plotdata['pffig']['nn_elec']['xaxis'] = nn_xaxis
-            plotdata['pffig']['nn_elec']['yaxis'] = output['pfe_GB']
+            prefix = 'pf'
+            plotdata[prefix + 'fig']['nn_elec'] = {}
+            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB']
+            plotdata[prefix + 'fig']['nn_ion0'] = {}
+            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
+        if plot_df:
+            prefix = 'df'
+            plotdata[prefix + 'fig']['nn_elec'] = {}
+            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB']
+            plotdata[prefix + 'fig']['nn_ion0'] = {}
+            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
 
         #timer('nn dictized at ', start)
-    for prefix in ['ef', 'pf']:
+    for prefix in ['ef', 'pf', 'df']:
         if prefix + 'fig' in figs:
             for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
                 plotdata[prefix + 'fig']['ion' + str(i)] = {}
@@ -133,11 +146,12 @@ def swap_x(attr, old, new):
     except TypeError:
         return
 
-    for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
-        for column_name in sources[figname]:
-            sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
+    if plot_freq:
+        for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
+            for column_name in sources[figname]:
+                sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
-    for figname in ['effig', 'pffig', 'pinchfig']:
+    for figname in ['effig', 'pffig', 'dffig', 'pinchfig']:
         if figname in figs:
             for column_name in sources[figname]:
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
@@ -168,7 +182,7 @@ def updater(attr, old, new):
 
     plotdata = extract_plotdata(sel_dict)
     #timer('Extracted plotdata', start)
-    for figname in ['effig', 'pffig', 'pinchfig']:
+    for figname in ['effig', 'pffig', 'dffig', 'pinchfig']:
         if figname in figs:
             for column_name in plotdata[figname]:
                 sources[figname][column_name].data = plotdata[figname][column_name]
@@ -200,8 +214,9 @@ ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 plot_nn = plot_nn and True
 plot_freq = False
 plot_ef = True
-plot_pf = True
+plot_pf = False
 plot_pinch = True
+plot_df = True
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
@@ -275,6 +290,11 @@ if plot_pinch:
                              y_axis_label='Particle Pinch [GB]',
                              height=2*height_block, width=2*height_block,
                              tools=flux_tools, x_range=x_range)
+if plot_df:
+    figs['dffig']   = Figure(x_axis_label=xaxis_name,
+                             y_axis_label='Particle Diffusion [GB]',
+                             height=2*height_block, width=2*height_block,
+                             tools=flux_tools, x_range=x_range)
 
 for fig in figs.values():
     hover = HoverTool()
@@ -344,7 +364,7 @@ for ii in range(ds.dims['nions']):
 
 sources = {}
 # link data sources to figures
-for figname in ['effig', 'pffig', 'pinchfig']:
+for figname in ['effig', 'pffig', 'pinchfig', 'dffig']:
     if figname in figs:
         sources[figname] = OrderedDict()
         for ii, column_name in enumerate(linenames):
