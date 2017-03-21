@@ -91,6 +91,14 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn_ion0'] = {}
             plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
             plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
+        if plot_pinch:
+            prefix = 'pinch'
+            plotdata[prefix + 'fig']['nn_elec'] = {}
+            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output['vte_GB_plus_vce_GB']
+            plotdata[prefix + 'fig']['nn_ion0'] = {}
+            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output['vti_GB_plus_vci_GB']
 
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf', 'df']:
@@ -102,8 +110,8 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['elec'] = {}
             plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
             plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
-    prefix = 'pinch'
     if plot_pinch:
+        prefix = 'pinch'
         for i, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
             plotdata[prefix + 'fig']['ion' + str(i)] = {}
             plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
@@ -285,14 +293,14 @@ if plot_pf:
                              y_axis_label='Particle Flux [GB]',
                              height=2*height_block, width=2*height_block,
                              tools=flux_tools, x_range=x_range)
-if plot_pinch:
-    figs['pinchfig']   = Figure(x_axis_label=xaxis_name,
-                             y_axis_label='Particle Pinch [GB]',
-                             height=2*height_block, width=2*height_block,
-                             tools=flux_tools, x_range=x_range)
 if plot_df:
     figs['dffig']   = Figure(x_axis_label=xaxis_name,
                              y_axis_label='Particle Diffusion [GB]',
+                             height=2*height_block, width=2*height_block,
+                             tools=flux_tools, x_range=x_range)
+if plot_pinch:
+    figs['pinchfig']   = Figure(x_axis_label=xaxis_name,
+                             y_axis_label='Particle Pinch [GB]',
                              height=2*height_block, width=2*height_block,
                              tools=flux_tools, x_range=x_range)
 
