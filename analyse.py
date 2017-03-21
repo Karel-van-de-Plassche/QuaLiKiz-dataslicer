@@ -75,6 +75,9 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn_ion0'] = {}
             plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
             plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
+            plotdata[prefix + 'fig']['nn_elec'] = {}
+            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB2']
         if plot_pf:
             prefix = 'pf'
             plotdata[prefix + 'fig']['nn_elec'] = {}
@@ -99,6 +102,12 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn_ion0'] = {}
             plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
             plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output['vti_GB_plus_vci_GB']
+            plotdata[prefix + 'fig']['nn2_elec'] = {}
+            plotdata[prefix + 'fig']['nn2_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn2_elec']['yaxis'] = output['vte_GB_plus_vce_GB2']
+            plotdata[prefix + 'fig']['nn2_ion0'] = {}
+            plotdata[prefix + 'fig']['nn2_ion0']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn2_ion0']['yaxis'] = output['vti_GB_plus_vci_GB2']
 
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf', 'df']:
@@ -350,14 +359,18 @@ names_particles = ['ele'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
 
 # Define the line styles
 color = OrderedDict([('elec', sepcolor[0]),
-                     ('nn_elec', sepcolor[0])])
+                     ('nn_elec', sepcolor[0]),
+                     ('nn2_elec', sepcolor[0])])
 line_dash = OrderedDict([('elec', 'solid'),
-                         ('nn_elec', 'dashed')])
+                         ('nn_elec', 'dashed'),
+                         ('nn2_elec', 'dotted')])
 legend = OrderedDict([('elec', 'elec'),
-                      ('nn_elec', 'nn_elec')])
+                      ('nn_elec', 'nn_elec'),
+                      ('nn2_elec', 'nn2_elec')])
 linenames = ['elec']
 if plot_nn:
     linenames.append('nn_elec')
+    linenames.append('nn2_elec')
 
 for ii in range(ds.dims['nions']):
     linenames.append('ion' + str(ii))
@@ -366,9 +379,13 @@ for ii in range(ds.dims['nions']):
     legend['ion' + str(ii)] = 'Z = ' + str(ds['Zi'].data[ii])
     if plot_nn:
         linenames.append('nn_ion' + str(ii))
+        linenames.append('nn2_ion' + str(ii))
         color['nn_ion' + str(ii)] = sepcolor[ii + 1]
         line_dash['nn_ion' + str(ii)] = 'dashed'
         legend['nn_ion' + str(ii)] = 'nn_Z = ' + str(ds['Zi'].data[ii])
+        color['nn2_ion' + str(ii)] = sepcolor[ii + 1]
+        line_dash['nn2_ion' + str(ii)] = 'dotted'
+        legend['nn2_ion' + str(ii)] = 'nn2_Z = ' + str(ds['Zi'].data[ii])
 
 sources = {}
 # link data sources to figures

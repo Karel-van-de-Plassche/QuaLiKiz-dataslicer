@@ -11,16 +11,19 @@ simple_nns = ['efe_GB',
               'vte_GB_plus_vce_GB',
               'vti_GB_plus_vci_GB']
 
-combo_nns = {'efe_GB2': ['efe_GB_min_efeETG_GB', 'efeETG_GB', lambda x, y: x + y]}
+combo_nns = {'efe_GB2': ['efe_GB_min_efeETG_GB', 'efeETG_GB', lambda x, y: x + y],
+             'vte_GB_plus_vce_GB2': ['vte_GB', 'vce_GB', lambda x, y: x + y],
+             'vti_GB_plus_vci_GB2': ['vti_GB', 'vci_GB', lambda x, y: x + y]
+}
 
 nns = []
 for name in simple_nns:
-    nn = QuaLiKizNDNN.from_json('nn_' + name + '.json')
+    nn = QuaLiKizNDNN.from_json('nns/nn_' + name + '.json')
     nns.append(nn)
 
 for name, recipe in combo_nns.items():
-    nn1 = QuaLiKizNDNN.from_json('nn_' + recipe[0] + '.json')
-    nn2 = QuaLiKizNDNN.from_json('nn_' + recipe[1] + '.json')
+    nn1 = QuaLiKizNDNN.from_json('nns/nn_' + recipe[0] + '.json')
+    nn2 = QuaLiKizNDNN.from_json('nns/nn_' + recipe[1] + '.json')
     nn = QuaLiKizDuoNN(name, nn1, nn2, recipe[2])
     nns.append(nn)
 nn = QuaLiKizMultiNN(nns)
