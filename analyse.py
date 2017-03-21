@@ -120,10 +120,12 @@ def extract_plotdata(sel_dict):
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf', 'df']:
         if prefix + 'fig' in figs:
-            for i, efi in enumerate(slice_[prefix + 'i_GB'].T):
-                plotdata[prefix + 'fig']['ion' + str(i)] = {}
-                plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
-                plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = efi.data
+            for ii, efi in enumerate(slice_[prefix + 'i_GB'].T):
+                if ii > 0:
+                    break
+                plotdata[prefix + 'fig']['ion' + str(ii)] = {}
+                plotdata[prefix + 'fig']['ion' + str(ii)]['xaxis'] = xaxis
+                plotdata[prefix + 'fig']['ion' + str(ii)]['yaxis'] = efi.data
             plotdata[prefix + 'fig']['elec'] = {}
             plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
             plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
@@ -140,6 +142,8 @@ def extract_plotdata(sel_dict):
     if plot_pinch:
         prefix = 'pinch'
         for i, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
+            if ii > 0:
+                break
             plotdata[prefix + 'fig']['ion' + str(i)] = {}
             plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
             plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = vti.data + vci.data
@@ -397,6 +401,8 @@ if plot_nn:
     linenames.append('nn2_elec')
 
 for ii in range(ds.dims['nions']):
+    if ii > 0:
+        continue
     linenames.append('ion' + str(ii))
     color['ion' + str(ii)] = sepcolor[ii + 1]
     line_dash['ion' + str(ii)] = 'solid'
@@ -433,6 +439,7 @@ for figname in ['effig', 'pffig', 'pinchfig', 'dffig']:
                                       legend=legend[column_name],
                                       size=6)
         figs[figname].legend.location = 'top_left'
+        figs[figname].legend[0].items.clear()
 
 ############################################################
 # Create legend, style and data sources for growplots      #
