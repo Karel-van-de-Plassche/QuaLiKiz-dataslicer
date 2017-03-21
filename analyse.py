@@ -48,7 +48,7 @@ def extract_plotdata(sel_dict):
     slice_ = slice_.where(slice_['efi_GB'] < 60)
     xaxis = slice_[xaxis_name].data
     plotdata = {}
-    for prefix in ['ef', 'pf', 'df', 'pinch']:
+    for prefix in ['ef', 'pf', 'df', 'pinch', 'grow']:
         plotdata[prefix + 'fig'] = {}
 
     if plot_nn:
@@ -119,6 +119,16 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['elec'] = {}
             plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
             plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
+
+    if plot_grow:
+        prefix = 'grow'
+        plotdata[prefix + 'fig']['kr >= 2'] = {}
+        plotdata[prefix + 'fig']['kr >= 2']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['kr >= 2']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] >= 2).max(['kthetarhos', 'numsols', 'nions']).data
+        plotdata[prefix + 'fig']['kr < 2'] = {}
+        plotdata[prefix + 'fig']['kr < 2']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['kr < 2']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] < 2).max(['kthetarhos', 'numsols', 'nions']).data
+
     if plot_pinch:
         prefix = 'pinch'
         for i, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
@@ -168,7 +178,7 @@ def swap_x(attr, old, new):
             for column_name in sources[figname]:
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
-    for figname in ['effig', 'pffig', 'dffig', 'pinchfig']:
+    for figname in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
         if figname in figs:
             for column_name in sources[figname]:
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
@@ -199,7 +209,7 @@ def updater(attr, old, new):
 
     plotdata = extract_plotdata(sel_dict)
     #timer('Extracted plotdata', start)
-    for figname in ['effig', 'pffig', 'dffig', 'pinchfig']:
+    for figname in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
         if figname in figs:
             for column_name in plotdata[figname]:
                 sources[figname][column_name].data = plotdata[figname][column_name]
@@ -234,6 +244,7 @@ plot_ef = True
 plot_pf = False
 plot_pinch = True
 plot_df = True
+plot_grow = True
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
@@ -310,6 +321,11 @@ if plot_df:
 if plot_pinch:
     figs['pinchfig']   = Figure(x_axis_label=xaxis_name,
                              y_axis_label='Particle Pinch [GB]',
+                             height=2*height_block, width=2*height_block,
+                             tools=flux_tools, x_range=x_range)
+if plot_grow:
+    figs['growfig']   = Figure(x_axis_label=xaxis_name,
+                             y_axis_label='Maximum Growth Rate [GB]',
                              height=2*height_block, width=2*height_block,
                              tools=flux_tools, x_range=x_range)
 
@@ -409,6 +425,21 @@ for figname in ['effig', 'pffig', 'pinchfig', 'dffig']:
                                       legend=legend[column_name],
                                       size=6)
         figs[figname].legend.location = 'top_left'
+
+############################################################
+# Create legend, style and data sources for growplots      #
+###########################################################
+figname = 'growfig'
+sources[figname] = OrderedDict()
+for ii, column_name in enumerate(['kr < 2', 'kr >= 2']):
+    sources[figname][column_name] = ColumnDataSource({'xaxis': [],
+                                                      'yaxis': []})
+    figs[figname].scatter('xaxis', 'yaxis',
+                          source=sources[figname][column_name],
+                          color=sepcolor[-1 - ii],
+                          legend=column_name,
+                          size=6)
+    figs[figname].legend.location = 'top_left'
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
