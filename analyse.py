@@ -108,6 +108,14 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn2_ion0'] = {}
             plotdata[prefix + 'fig']['nn2_ion0']['xaxis'] = nn_xaxis
             plotdata[prefix + 'fig']['nn2_ion0']['yaxis'] = output['vti_GB_plus_vci_GB2']
+        if plot_grow:
+            prefix = 'grow'
+            #plotdata[prefix + 'fig']['nn_leq'] = {}
+            #plotdata[prefix + 'fig']['nn_leq']['xaxis'] = xaxis
+            #plotdata[prefix + 'fig']['nn_leq']['yaxis'] = output['ome_GB_leq2max']
+            plotdata[prefix + 'fig']['nn_less'] = {}
+            plotdata[prefix + 'fig']['nn_less']['xaxis'] = xaxis
+            plotdata[prefix + 'fig']['nn_less']['yaxis'] = output['ome_GB_less2max']
 
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf', 'df']:
@@ -122,12 +130,12 @@ def extract_plotdata(sel_dict):
 
     if plot_grow:
         prefix = 'grow'
-        plotdata[prefix + 'fig']['kr >= 2'] = {}
-        plotdata[prefix + 'fig']['kr >= 2']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['kr >= 2']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] >= 2).max(['kthetarhos', 'numsols', 'nions']).data
-        plotdata[prefix + 'fig']['kr < 2'] = {}
-        plotdata[prefix + 'fig']['kr < 2']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['kr < 2']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] < 2).max(['kthetarhos', 'numsols', 'nions']).data
+        plotdata[prefix + 'fig']['leq'] = {}
+        plotdata[prefix + 'fig']['leq']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['leq']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] >= 2).max(['kthetarhos', 'numsols', 'nions']).data
+        plotdata[prefix + 'fig']['less'] = {}
+        plotdata[prefix + 'fig']['less']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['less']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] < 2).max(['kthetarhos', 'numsols', 'nions']).data
 
     if plot_pinch:
         prefix = 'pinch'
@@ -429,17 +437,43 @@ for figname in ['effig', 'pffig', 'pinchfig', 'dffig']:
 ############################################################
 # Create legend, style and data sources for growplots      #
 ###########################################################
-figname = 'growfig'
-sources[figname] = OrderedDict()
-for ii, column_name in enumerate(['kr < 2', 'kr >= 2']):
-    sources[figname][column_name] = ColumnDataSource({'xaxis': [],
-                                                      'yaxis': []})
-    figs[figname].scatter('xaxis', 'yaxis',
-                          source=sources[figname][column_name],
-                          color=sepcolor[-1 - ii],
-                          legend=column_name,
-                          size=6)
-    figs[figname].legend.location = 'top_left'
+color = OrderedDict([('less', sepcolor[-1]),
+                     ('leq', sepcolor[-2]),
+                     ('nn_less', sepcolor[-1]),
+                     ('nn_leq', sepcolor[-2])])
+line_dash = OrderedDict([('less', 'solid'),
+                         ('leq', 'solid'),
+                         ('nn_less', 'dashed'),
+                         ('nn_leq', 'dashed')])
+legend = OrderedDict([('less', 'kr < 2'),
+                      ('leq', 'kr >= 2'),
+                      ('nn_less', 'nn_kr < 2'),
+                      ('nn_leq', 'nn_kr >= 2')])
+linenames = ['less', 'leq']
+if plot_nn:
+    linenames.extend(['nn_less', 'nn_leq'])
+
+# link data sources to figures
+for figname in ['growfig']:
+    if figname in figs:
+        sources[figname] = OrderedDict()
+        for ii, column_name in enumerate(linenames):
+            sources[figname][column_name] = ColumnDataSource({'xaxis': [],
+                                                              'yaxis': []})
+            if 'nn' in column_name:
+                if plot_nn:
+                    figs[figname].line('xaxis', 'yaxis',
+                                       source=sources[figname][column_name],
+                                       color=color[column_name],
+                                       legend=legend[column_name],
+                                       line_dash=line_dash[column_name])
+            else:
+                figs[figname].scatter('xaxis', 'yaxis',
+                                      source=sources[figname][column_name],
+                                      color=color[column_name],
+                                      legend=legend[column_name],
+                                      size=6)
+        figs[figname].legend.location = 'top_left'
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
