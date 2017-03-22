@@ -75,9 +75,9 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn_ion0'] = {}
             plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
             plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
-            plotdata[prefix + 'fig']['nn_elec'] = {}
-            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB2']
+            plotdata[prefix + 'fig']['nn2_elec'] = {}
+            plotdata[prefix + 'fig']['nn2_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn2_elec']['yaxis'] = output[prefix + 'e_GB2']
         if plot_pf:
             prefix = 'pf'
             plotdata[prefix + 'fig']['nn_elec'] = {}
