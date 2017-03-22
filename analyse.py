@@ -45,7 +45,7 @@ def extract_plotdata(sel_dict):
     slice_.load()
 
     slice_ = slice_.where(slice_['efe_GB'] < 60)
-    slice_ = slice_.where(slice_['efi_GB'] < 60)
+    slice_ = slice_.where(slice_['efi_GB'].isel(nions=0) < 60)
     xaxis = slice_[xaxis_name].data
     plotdata = {}
     for prefix in ['ef', 'pf', 'df', 'pinch', 'grow']:
@@ -134,10 +134,10 @@ def extract_plotdata(sel_dict):
         prefix = 'grow'
         plotdata[prefix + 'fig']['leq'] = {}
         plotdata[prefix + 'fig']['leq']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['leq']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] >= 2).max(['kthetarhos', 'numsols', 'nions']).data
+        plotdata[prefix + 'fig']['leq']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] >= 2).max(['kthetarhos', 'numsols']).data
         plotdata[prefix + 'fig']['less'] = {}
         plotdata[prefix + 'fig']['less']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['less']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] < 2).max(['kthetarhos', 'numsols', 'nions']).data
+        plotdata[prefix + 'fig']['less']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] < 2).max(['kthetarhos', 'numsols']).data
 
     if plot_pinch:
         prefix = 'pinch'
