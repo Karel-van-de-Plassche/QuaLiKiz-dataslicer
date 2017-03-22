@@ -11,7 +11,7 @@ import os
 import time
 from collections import OrderedDict
 from math import ceil
-from itertools import repeat
+from itertools import repeat, product
 
 from IPython import embed
 from bokeh_ion_range_slider.ionrangeslider import IonRangeSlider
@@ -19,7 +19,7 @@ from bokeh.plotting import figure, show, reset_output, Figure
 from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox
 from bokeh.models import HoverTool
 from bokeh.io import curdoc
-from bokeh.models import ColumnDataSource, CustomJS
+from bokeh.models import ColumnDataSource, CustomJS, Legend, Line, Circle
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
 try:
@@ -383,64 +383,54 @@ plotrow = row(list(figs.values()),
 # Create legend, style and data sources for fluxplots      #
 ############################################################
 sepcolor = sepcolor[9]
-names_particles = ['ele'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
-
-# Define the line styles
-color = OrderedDict([('elec', sepcolor[0]),
-                     ('nn_elec', sepcolor[0]),
-                     ('nn2_elec', sepcolor[0])])
-line_dash = OrderedDict([('elec', 'solid'),
-                         ('nn_elec', 'dashed'),
-                         ('nn2_elec', 'dotted')])
-legend = OrderedDict([('elec', 'elec'),
-                      ('nn_elec', 'nn_elec'),
-                      ('nn2_elec', 'nn2_elec')])
-linenames = ['elec']
-if plot_nn:
-    linenames.append('nn_elec')
-    linenames.append('nn2_elec')
-
-for ii in range(ds.dims['nions']):
-    if ii > 0:
+particle_names = ['elec'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
+style_names = ['', 'nn_', 'nn2_']
+style_dash = ['solid', 'dashed', 'dotted']
+lines = OrderedDict()
+for (num_style, style), (num_part, part) in product(enumerate(style_names), enumerate(particle_names)):
+    if num_part > 1:
         continue
-    linenames.append('ion' + str(ii))
-    color['ion' + str(ii)] = sepcolor[ii + 1]
-    line_dash['ion' + str(ii)] = 'solid'
-    legend['ion' + str(ii)] = 'Z = ' + str(ds['Zi'].data[ii])
-    if plot_nn:
-        linenames.append('nn_ion' + str(ii))
-        linenames.append('nn2_ion' + str(ii))
-        color['nn_ion' + str(ii)] = sepcolor[ii + 1]
-        line_dash['nn_ion' + str(ii)] = 'dashed'
-        legend['nn_ion' + str(ii)] = 'nn_Z = ' + str(ds['Zi'].data[ii])
-        color['nn2_ion' + str(ii)] = sepcolor[ii + 1]
-        line_dash['nn2_ion' + str(ii)] = 'dotted'
-        legend['nn2_ion' + str(ii)] = 'nn2_Z = ' + str(ds['Zi'].data[ii])
+    if part == 'elec':
+        name = 'elec'
+    else:
+        name = 'ion' + str(num_part - 1)
+    name = style + name
+    line = lines[name] = {}
+    line['color'] = sepcolor[num_part]
+    line['dash'] = style_dash[num_style]
+    line['legend'] = style + part
 
-sources = {}
 # link data sources to figures
+legend_added = False
+sources = {}
 for figname in ['effig', 'pffig', 'pinchfig', 'dffig']:
     if figname in figs:
         sources[figname] = OrderedDict()
-        for ii, column_name in enumerate(linenames):
-            sources[figname][column_name] = ColumnDataSource({'xaxis': [],
-                                                              'yaxis': []})
-            if 'nn' in column_name:
+        fig = figs[figname]
+        for line_name, line in lines.items():
+            source = sources[figname][line_name] = ColumnDataSource({'xaxis': [],
+                                                                     'yaxis': []})
+            if 'nn' in line_name:
                 if plot_nn:
-                    figs[figname].line('xaxis', 'yaxis',
-                                       source=sources[figname][column_name],
-                                       color=color[column_name],
-                                       legend=legend[column_name],
-                                       line_dash=line_dash[column_name])
+                    glyph = fig.line('xaxis', 'yaxis',
+                                       source=source,
+                                       color=line['color'],
+                                       #legend=legend[column_name],
+                                       line_dash=line['dash'])
             else:
-                figs[figname].scatter('xaxis', 'yaxis',
-                                      source=sources[figname][column_name],
-                                      color=color[column_name],
-                                      legend=legend[column_name],
+                glyph = fig.scatter('xaxis', 'yaxis',
+                                      source=source,
+                                      color=line['color'],
+                                      #legend=legend[column_name],
                                       size=6)
-        figs[figname].legend.location = 'top_left'
-        figs[figname].legend[0].items.clear()
-
+            line['glyph'] = glyph
+        #figs[figname].legend.location = 'top_left'
+        #figs[figname].legend[0].items.clear()
+        if not legend_added:
+            legends = [(line['legend'], [line['glyph']]) for line in lines.values()]
+            legend = Legend(legends=legends, location=(0,0), orientation='horizontal')
+            fig.add_layout(legend, 'above')
+            legend_added = True
 ############################################################
 # Create legend, style and data sources for growplots      #
 ###########################################################
