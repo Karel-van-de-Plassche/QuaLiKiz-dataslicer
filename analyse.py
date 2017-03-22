@@ -313,7 +313,7 @@ toolbar = row(widgetbox([xaxis_slider]), sizing_mode='scale_width')
 flux_tools = ['box_zoom,pan,zoom_in,zoom_out,reset,save']
 
 x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
-figs = {}
+figs = OrderedDict()
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
 if plot_ef:
     figs['effig']   = Figure(x_axis_label=xaxis_name,
