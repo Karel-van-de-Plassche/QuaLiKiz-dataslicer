@@ -8,7 +8,7 @@ simple_nns = ['efe_GB',
               'dfe_GB',
               'dfi_GB',
               'gam_GB_less2max',
-              #'gam_GB_leq2max',
+              'gam_GB_leq2max',
               'vte_GB_plus_vce_GB',
               'vti_GB_plus_vci_GB']
 

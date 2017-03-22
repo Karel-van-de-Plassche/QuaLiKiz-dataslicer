@@ -110,12 +110,12 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn2_ion0']['yaxis'] = output['vti_GB_plus_vci_GB2']
         if plot_grow:
             prefix = 'grow'
-            #plotdata[prefix + 'fig']['nn_leq'] = {}
-            #plotdata[prefix + 'fig']['nn_leq']['xaxis'] = xaxis
-            #plotdata[prefix + 'fig']['nn_leq']['yaxis'] = output['ome_GB_leq2max']
+            plotdata[prefix + 'fig']['nn_leq'] = {}
+            plotdata[prefix + 'fig']['nn_leq']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_leq']['yaxis'] = output['gam_GB_leq2max']
             plotdata[prefix + 'fig']['nn_less'] = {}
-            plotdata[prefix + 'fig']['nn_less']['xaxis'] = xaxis
-            plotdata[prefix + 'fig']['nn_less']['yaxis'] = output['ome_GB_less2max']
+            plotdata[prefix + 'fig']['nn_less']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nn_less']['yaxis'] = output['gam_GB_less2max']
 
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf', 'df']:
