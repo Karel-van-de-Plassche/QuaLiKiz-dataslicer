@@ -141,12 +141,12 @@ def extract_plotdata(sel_dict):
 
     if plot_pinch:
         prefix = 'pinch'
-        for i, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
+        for ii, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
             if ii > 0:
                 break
-            plotdata[prefix + 'fig']['ion' + str(i)] = {}
-            plotdata[prefix + 'fig']['ion' + str(i)]['xaxis'] = xaxis
-            plotdata[prefix + 'fig']['ion' + str(i)]['yaxis'] = vti.data + vci.data
+            plotdata[prefix + 'fig']['ion' + str(ii)] = {}
+            plotdata[prefix + 'fig']['ion' + str(ii)]['xaxis'] = xaxis
+            plotdata[prefix + 'fig']['ion' + str(ii)]['yaxis'] = vti.data + vci.data
         plotdata[prefix + 'fig']['elec'] = {}
         plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
         plotdata[prefix + 'fig']['elec']['yaxis'] = slice_['vte_GB'].data + slice_['vte_GB'].data
@@ -345,6 +345,8 @@ for fig in figs.values():
     hover = HoverTool()
     hover.tooltips = [('x,y', '(@xaxis, @yaxis)')]
     fig.add_tools(hover)
+plotrow_figs = list(figs.values())
+
 # Define the frequency-like plots (e.g. kthetarhos at the x-axis)
 if plot_freq:
     freq_tools = 'save'
@@ -374,9 +376,10 @@ if plot_freq:
     omerow = row(figs['omelow'], figs['omehigh'],
                  height=height_block, width=height_block, sizing_mode='scale_width')
     freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
+    plotrow_figs.append(freqgrid)
 
 
-plotrow = row(list(figs.values()),
+plotrow = row(plotrow_figs,
               sizing_mode='scale_width', height=2*height_block)
 
 ############################################################
