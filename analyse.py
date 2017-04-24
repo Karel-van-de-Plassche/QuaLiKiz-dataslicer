@@ -12,6 +12,11 @@ import time
 from collections import OrderedDict
 from math import ceil
 from itertools import repeat, product
+#import sys
+#
+#sys.path.append(os.path.dirname(os.path.realpath(os.path.join(__file__, '.'))))
+#print(sys.path)
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 from IPython import embed
 from bokeh_ion_range_slider.ionrangeslider import IonRangeSlider
@@ -22,6 +27,7 @@ from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, CustomJS, Legend, Line, Circle
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
+#TODO: Add sane checking if loading failed and why
 try:
     from run_model import QuaLiKizNDNN
 except ModuleNotFoundError:
@@ -284,7 +290,7 @@ for name in scan_dims:
             start = int(np.argwhere(
                 np.isclose(ds[name], nn.feature_min[name], rtol=1e-2)))
             color = 'red'
-    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name]).tolist(),
+    slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ", height=56,
                                        prettify=round, start=start,
                                        color=color)
