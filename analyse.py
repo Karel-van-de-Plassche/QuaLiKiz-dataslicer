@@ -6,7 +6,6 @@ License: CeCILL v2.1
 import xarray as xr
 import pandas as pd
 import numpy as np
-import scipy as sc
 import os
 import time
 from collections import OrderedDict
