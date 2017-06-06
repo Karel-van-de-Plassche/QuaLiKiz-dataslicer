@@ -80,9 +80,18 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn_ion0'] = {}
             plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
             plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
-            plotdata[prefix + 'fig']['nn2_elec'] = {}
-            plotdata[prefix + 'fig']['nn2_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn2_elec']['yaxis'] = output[prefix + 'e_GB2']
+            plotdata[prefix + 'fig']['nnA_elec'] = {}
+            plotdata[prefix + 'fig']['nnA_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nnA_elec']['yaxis'] = output[prefix + 'e_GB_A']
+            plotdata[prefix + 'fig']['nnA_ion0'] = {}
+            plotdata[prefix + 'fig']['nnA_ion0']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nnA_ion0']['yaxis'] = output[prefix + 'i_GB_A']
+            plotdata[prefix + 'fig']['nnC_elec'] = {}
+            plotdata[prefix + 'fig']['nnC_elec']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nnC_elec']['yaxis'] = output[prefix + 'e_GB_C']
+            plotdata[prefix + 'fig']['nnC_ion0'] = {}
+            plotdata[prefix + 'fig']['nnC_ion0']['xaxis'] = nn_xaxis
+            plotdata[prefix + 'fig']['nnC_ion0']['yaxis'] = output[prefix + 'i_GB_C']
         if plot_pf:
             prefix = 'pf'
             plotdata[prefix + 'fig']['nn_elec'] = {}
@@ -113,14 +122,14 @@ def extract_plotdata(sel_dict):
             plotdata[prefix + 'fig']['nn2_ion0'] = {}
             plotdata[prefix + 'fig']['nn2_ion0']['xaxis'] = nn_xaxis
             plotdata[prefix + 'fig']['nn2_ion0']['yaxis'] = output['vti_GB_plus_vci_GB2']
-        if plot_grow:
-            prefix = 'grow'
-            plotdata[prefix + 'fig']['nn_leq'] = {}
-            plotdata[prefix + 'fig']['nn_leq']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_leq']['yaxis'] = output['gam_GB_leq2max']
-            plotdata[prefix + 'fig']['nn_less'] = {}
-            plotdata[prefix + 'fig']['nn_less']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_less']['yaxis'] = output['gam_GB_less2max']
+        #if plot_grow:
+        #    prefix = 'grow'
+        #    plotdata[prefix + 'fig']['nn_leq'] = {}
+        #    plotdata[prefix + 'fig']['nn_leq']['xaxis'] = nn_xaxis
+        #    plotdata[prefix + 'fig']['nn_leq']['yaxis'] = output['gam_GB_leq2max']
+        #    plotdata[prefix + 'fig']['nn_less'] = {}
+        #    plotdata[prefix + 'fig']['nn_less']['xaxis'] = nn_xaxis
+        #    plotdata[prefix + 'fig']['nn_less']['yaxis'] = output['gam_GB_less2max']
 
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf', 'df']:
@@ -256,12 +265,12 @@ ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
-plot_freq = False
+plot_freq = True
 plot_ef = True
 plot_pf = False
-plot_pinch = True
-plot_df = True
-plot_grow = True
+plot_pinch = False
+plot_df = False
+plot_grow = False
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
@@ -283,12 +292,16 @@ for name in scan_dims:
     start = int(ds[name].size/2)
     color = 'green'
     if plot_nn:
-        if nn.feature_min[name] == nn.feature_max[name]:
-            # If there are features with a specific value, color the bar red
-            # and put marker on value
-            start = int(np.argwhere(
-                np.isclose(ds[name], nn.feature_min[name], rtol=1e-2)))
-            color = 'red'
+        try:
+            if nn.feature_min[name] == nn.feature_max[name]:
+                # If there are features with a specific value, color the bar red
+                # and put marker on value
+                start = int(np.argwhere(
+                    np.isclose(ds[name], nn.feature_min[name], rtol=1e-2)))
+                color = 'red'
+        except KeyError:
+            print('No ' + name + ' value found')
+
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ", height=56,
                                        prettify=round, start=start,
@@ -392,8 +405,8 @@ plotrow = row(plotrow_figs,
 ############################################################
 sepcolor = sepcolor[9]
 particle_names = ['elec'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
-style_names = ['', 'nn_', 'nn2_']
-style_dash = ['solid', 'dashed', 'dotted']
+style_names = ['', 'nn_', 'nnA_', 'nnC_']
+style_dash = ['solid', 'dashed', 'dotted', 'dotdash']
 lines = OrderedDict()
 for (num_style, style), (num_part, part) in product(enumerate(style_names), enumerate(particle_names)):
     if num_part > 1:
