@@ -55,6 +55,9 @@ def extract_plotdata(sel_dict):
     plotdata = {}
     for prefix in ['ef', 'pf', 'df', 'pinch', 'grow']:
         plotdata[prefix + 'fig'] = {}
+    for prefix in ['ef', 'pf', 'df', 'pinch']:
+        for suffix in flux_suffixes:
+            plotdata[prefix + 'fig' + suffix] = {}
 
     if plot_nn:
         nn_xaxis = np.linspace(xaxis[0], xaxis[-1], 60)
@@ -70,28 +73,20 @@ def extract_plotdata(sel_dict):
             except KeyError:
                 output[name] = np.zeros_like(output.index)
 
-            
+
         #timer('nn eval at ', start)
         if plot_ef:
             prefix = 'ef'
-            plotdata[prefix + 'fig']['nn_elec'] = {}
-            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB']
-            plotdata[prefix + 'fig']['nn_ion0'] = {}
-            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
-            plotdata[prefix + 'fig']['nnA_elec'] = {}
-            plotdata[prefix + 'fig']['nnA_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nnA_elec']['yaxis'] = output[prefix + 'e_GB_A']
-            plotdata[prefix + 'fig']['nnA_ion0'] = {}
-            plotdata[prefix + 'fig']['nnA_ion0']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nnA_ion0']['yaxis'] = output[prefix + 'i_GB_A']
-            plotdata[prefix + 'fig']['nnC_elec'] = {}
-            plotdata[prefix + 'fig']['nnC_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nnC_elec']['yaxis'] = output[prefix + 'e_GB_C']
-            plotdata[prefix + 'fig']['nnC_ion0'] = {}
-            plotdata[prefix + 'fig']['nnC_ion0']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nnC_ion0']['yaxis'] = output[prefix + 'i_GB_C']
+            for suffix in flux_suffixes:
+                for species in ['elec', 'ion0']:
+                    for nn_suffix in ['', '_A', '_B', '_C']:
+                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
+                        try:
+                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
+                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['yaxis'] = output[prefix + species[0] + suffix[1:] + '_GB' + nn_suffix]
+                        except KeyError:
+                            pass
+            print (plotdata[prefix + 'fig' + suffix].keys())
         if plot_pf:
             prefix = 'pf'
             plotdata[prefix + 'fig']['nn_elec'] = {}
@@ -133,16 +128,16 @@ def extract_plotdata(sel_dict):
 
         #timer('nn dictized at ', start)
     for prefix in ['ef', 'pf', 'df']:
-        if prefix + 'fig' in figs:
-            for ii, efi in enumerate(slice_[prefix + 'i_GB'].T):
-                if ii > 0:
-                    break
-                plotdata[prefix + 'fig']['ion' + str(ii)] = {}
-                plotdata[prefix + 'fig']['ion' + str(ii)]['xaxis'] = xaxis
-                plotdata[prefix + 'fig']['ion' + str(ii)]['yaxis'] = efi.data
-            plotdata[prefix + 'fig']['elec'] = {}
-            plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
-            plotdata[prefix + 'fig']['elec']['yaxis'] = slice_[prefix + 'e_GB'].data
+        for suffix in flux_suffixes:
+            if prefix + 'fig' in figs:
+                for species in ['elec', 'ion0']:
+                    embed()
+                    try:
+                        plotdata[prefix + 'fig' + suffix][species] = {}
+                        plotdata[prefix + 'fig' + suffix][species]['xaxis'] = xaxis
+                        plotdata[prefix + 'fig' + suffix][species]['yaxis'] = slice_[prefix + species[0] + suffix[1:] + '_GB'].data
+                    except KeyError:
+                        pass
 
     if plot_grow:
         prefix = 'grow'
@@ -204,14 +199,16 @@ def swap_x(attr, old, new):
             for column_name in sources[figname]:
                 sources[figname][column_name].data = {'xaxis': [], 'yaxis': [], 'curval': [], 'cursol': []}
 
-    for figname in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
-        if figname in figs:
-            for column_name in sources[figname]:
-                sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
+    for figpre in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
+        for suffix in flux_suffixes:
+            figname = figpre + suffix
+            if figname in figs:
+                for column_name in sources[figname]:
+                    sources[figname][column_name].data = {'xaxis': [], 'yaxis': []}
 
-            figs[figname].x_range.start = float(np.min(ds[xaxis_name]))
-            figs[figname].x_range.end = float(np.max(ds[xaxis_name]))
-            figs[figname].xaxis.axis_label = xaxis_name
+                figs[figname].x_range.start = float(np.min(ds[xaxis_name]))
+                figs[figname].x_range.end = float(np.max(ds[xaxis_name]))
+                figs[figname].xaxis.axis_label = xaxis_name
     updater(None, None, None)
 
 def read_sliders():
@@ -235,10 +232,12 @@ def updater(attr, old, new):
 
     plotdata = extract_plotdata(sel_dict)
     #timer('Extracted plotdata', start)
-    for figname in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
-        if figname in figs:
-            for column_name in plotdata[figname]:
-                sources[figname][column_name].data = plotdata[figname][column_name]
+    for figpre in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
+        for suffix in flux_suffixes:
+            figname = figpre + suffix
+            if figname in figs:
+                for column_name in plotdata[figname]:
+                    sources[figname][column_name].data = plotdata[figname][column_name]
     #timer('wrote flux sources', start)
     if plot_freq:
         for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
@@ -271,6 +270,13 @@ plot_pf = False
 plot_pinch = False
 plot_df = False
 plot_grow = False
+plot_sepflux = True
+
+sepflux_names = ['ETG', 'ITG', 'TEM']
+if plot_sepflux:
+    flux_suffixes = [''] + ['_' + name for name in sepflux_names]
+else:
+    flux_suffixes = ['']
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
@@ -334,10 +340,12 @@ x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
 figs = OrderedDict()
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
 if plot_ef:
-    figs['effig']   = Figure(x_axis_label=xaxis_name,
-                             y_axis_label='Energy Flux [GB]',
-                             height=2*height_block, width=2*height_block,
-                             tools=flux_tools, x_range=x_range)
+        for suffix in flux_suffixes:
+            figs['effig' + suffix]   = Figure(x_axis_label=xaxis_name,
+                                              y_axis_label='Energy Flux ' + suffix[1:] + ' [GB]',
+                                              height=2*height_block, width=2*height_block,
+                                              tools=flux_tools, x_range=x_range)
+
 if plot_pf:
     figs['pffig']   = Figure(x_axis_label=xaxis_name,
                              y_axis_label='Particle Flux [GB]',
@@ -364,6 +372,7 @@ for fig in figs.values():
     hover.tooltips = [('x,y', '(@xaxis, @yaxis)')]
     fig.add_tools(hover)
 plotrow_figs = list(figs.values())
+print(plotrow_figs)
 
 # Define the frequency-like plots (e.g. kthetarhos at the x-axis)
 if plot_freq:
@@ -396,7 +405,6 @@ if plot_freq:
     freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
     plotrow_figs.append(freqgrid)
 
-
 plotrow = row(plotrow_figs,
               sizing_mode='scale_width', height=2*height_block)
 
@@ -405,8 +413,8 @@ plotrow = row(plotrow_figs,
 ############################################################
 sepcolor = sepcolor[9]
 particle_names = ['elec'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
-style_names = ['', 'nn_', 'nnA_', 'nnC_']
-style_dash = ['solid', 'dashed', 'dotted', 'dotdash']
+style_names = ['', 'nn_', 'nnA_', 'nnB_', 'nnC_']
+style_dash = ['solid', 'dashed', 'dotted', 'dashdot', 'dotdash']
 lines = OrderedDict()
 for (num_style, style), (num_part, part) in product(enumerate(style_names), enumerate(particle_names)):
     if num_part > 1:
@@ -424,34 +432,37 @@ for (num_style, style), (num_part, part) in product(enumerate(style_names), enum
 # link data sources to figures
 legend_added = False
 sources = {}
-for figname in ['effig', 'pffig', 'pinchfig', 'dffig']:
-    if figname in figs:
-        sources[figname] = OrderedDict()
-        fig = figs[figname]
-        for line_name, line in lines.items():
-            source = sources[figname][line_name] = ColumnDataSource({'xaxis': [],
-                                                                     'yaxis': []})
-            if 'nn' in line_name:
-                if plot_nn:
-                    glyph = fig.line('xaxis', 'yaxis',
-                                       source=source,
-                                       color=line['color'],
-                                       #legend=legend[column_name],
-                                       line_dash=line['dash'])
-            else:
-                glyph = fig.scatter('xaxis', 'yaxis',
-                                      source=source,
-                                      color=line['color'],
-                                      #legend=legend[column_name],
-                                      size=6)
-            line['glyph'] = glyph
-        #figs[figname].legend.location = 'top_left'
-        #figs[figname].legend[0].items.clear()
-        if not legend_added:
-            legends = [(line['legend'], [line['glyph']]) for line in lines.values()]
-            legend = Legend(legends=legends, location=(0,0), orientation='horizontal')
-            fig.add_layout(legend, 'above')
-            legend_added = True
+for fluxname in ['effig', 'pffig', 'pinchfig', 'dffig']:
+    for flux_suffix in flux_suffixes:
+        figname = fluxname + flux_suffix
+        if figname in figs:
+            sources[figname] = OrderedDict()
+            fig = figs[figname]
+            for line_name, line in lines.items():
+                source = sources[figname][line_name] = ColumnDataSource({'xaxis': [],
+                                                                         'yaxis': []})
+                if 'nn' in line_name:
+                    if plot_nn:
+
+                        glyph = fig.line('xaxis', 'yaxis',
+                                           source=source,
+                                           color=line['color'],
+                                           #legend=legend[column_name],
+                                           line_dash=line['dash'])
+                else:
+                    glyph = fig.scatter('xaxis', 'yaxis',
+                                          source=source,
+                                          color=line['color'],
+                                          #legend=legend[column_name],
+                                          size=6)
+                line['glyph'] = glyph
+            #figs[figname].legend.location = 'top_left'
+            #figs[figname].legend[0].items.clear()
+            if not legend_added:
+                legends = [(line['legend'], [line['glyph']]) for line in lines.values()]
+                legend = Legend(legends=legends, location=(0,0), orientation='horizontal')
+                fig.add_layout(legend, 'above')
+                legend_added = True
 ############################################################
 # Create legend, style and data sources for growplots      #
 ###########################################################
