@@ -47,6 +47,8 @@ def takespread(sequence, num, repeat=1):
 def extract_plotdata(sel_dict):
     start = time.time()
     slice_ = ds.sel(**sel_dict)
+    slice_sep = ds_sep.sel(**sel_dict)
+    slice_ = xr.merge([slice_, slice_sep])
     slice_.load()
 
     slice_ = slice_.where(slice_['efe_GB'] < 60)
@@ -86,7 +88,6 @@ def extract_plotdata(sel_dict):
                             plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['yaxis'] = output[prefix + species[0] + suffix[1:] + '_GB' + nn_suffix]
                         except KeyError:
                             pass
-            print (plotdata[prefix + 'fig' + suffix].keys())
         if plot_pf:
             prefix = 'pf'
             plotdata[prefix + 'fig']['nn_elec'] = {}
@@ -131,7 +132,6 @@ def extract_plotdata(sel_dict):
         for suffix in flux_suffixes:
             if prefix + 'fig' in figs:
                 for species in ['elec', 'ion0']:
-                    embed()
                     try:
                         plotdata[prefix + 'fig' + suffix][species] = {}
                         plotdata[prefix + 'fig' + suffix][species]['xaxis'] = xaxis
@@ -261,6 +261,8 @@ def get_nn_scan_dims(nn, scan_dims):
 ############################################################
 ds = xr.open_dataset('Zeffcombo.nc.1')
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
+ds_sep = xr.open_dataset('Zeffcombo.sep.nc.1')
+ds_sep = ds_sep.drop([x for x in ds_sep.coords if x not in ds_sep.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
@@ -372,7 +374,6 @@ for fig in figs.values():
     hover.tooltips = [('x,y', '(@xaxis, @yaxis)')]
     fig.add_tools(hover)
 plotrow_figs = list(figs.values())
-print(plotrow_figs)
 
 # Define the frequency-like plots (e.g. kthetarhos at the x-axis)
 if plot_freq:
