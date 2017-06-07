@@ -34,18 +34,41 @@ for file_ in os.listdir(path):
 #efe_fancy = 1. + (3.) / (2. + 1) + (5.) / (4. + 1)
 #efi_fancy = (2. * 3.) / (2. + 1) + (4. * 5.) / (4. + 1)
 
-efe_GB_A = QuaLiKizComboNN('efe_GB_A', [nn_dict['efeETG_GB'],
+efe_GB_A = QuaLiKizComboNN('efe_GB_A', [
+                                        nn_dict['efeETG_GB'],
                                         nn_dict['efiITG_GB_div_efeITG_GB'],
                                         nn_dict['efiITG_GB_plus_efeITG_GB'],
                                         nn_dict['efiTEM_GB_div_efeTEM_GB'],
-                                        nn_dict['efiTEM_GB_plus_efeTEM_GB']],
+                                        nn_dict['efiTEM_GB_plus_efeTEM_GB']
+                                        ],
                             lambda a, b, c, d, e: a + c / (b + 1) + e / (d + 1))
+efeITG_GB_A = QuaLiKizComboNN('efeITG_GB_A', [
+                                        nn_dict['efiITG_GB_div_efeITG_GB'],
+                                        nn_dict['efiITG_GB_plus_efeITG_GB'],
+                                        ],
+                            lambda b, c: c / (b + 1))
+efeTEM_GB_A = QuaLiKizComboNN('efeTEM_GB_A', [
+                                        nn_dict['efiTEM_GB_div_efeTEM_GB'],
+                                        nn_dict['efiTEM_GB_plus_efeTEM_GB']
+                                        ],
+                            lambda d, e: e / (d + 1))
 efi_GB_A = QuaLiKizComboNN('efi_GB_A', [
                                         nn_dict['efiITG_GB_div_efeITG_GB'],
                                         nn_dict['efiITG_GB_plus_efeITG_GB'],
                                         nn_dict['efiTEM_GB_div_efeTEM_GB'],
-                                        nn_dict['efiTEM_GB_plus_efeTEM_GB']],
+                                        nn_dict['efiTEM_GB_plus_efeTEM_GB']
+                                        ],
                             lambda b, c, d, e: (b * c) / (b + 1) + (d * e) / (d + 1))
+efiITG_GB_A = QuaLiKizComboNN('efiITG_GB_A', [
+                                        nn_dict['efiITG_GB_div_efeITG_GB'],
+                                        nn_dict['efiITG_GB_plus_efeITG_GB'],
+                                        ],
+                            lambda b, c: (b * c) / (b + 1))
+efiTEM_GB_A = QuaLiKizComboNN('efiTEM_GB_A', [
+                                        nn_dict['efiTEM_GB_div_efeTEM_GB'],
+                                        nn_dict['efiTEM_GB_plus_efeTEM_GB']
+                                        ],
+                            lambda d, e: (d * e) / (d + 1))
 efe_GB_C = QuaLiKizComboNN('efe_GB_C', [nn_dict['efi_GB_div_efe_GB'],
                                         nn_dict['efi_GB_plus_efe_GB']],
                            lambda a, b: b / (a + 1))
@@ -54,18 +77,27 @@ efi_GB_C = QuaLiKizComboNN('efi_GB_C', [nn_dict['efi_GB_div_efe_GB'],
                            lambda a, b: (a * b) / (a + 1))
 efe_GB_D = nn_dict['efe_GB']
 efi_GB_D = nn_dict['efi_GB']
+efeETG_GB_D = nn_dict['efeETG_GB']
+efeTEM_GB_D = nn_dict['efeTEM_GB']
+efeITG_GB_D = nn_dict['efeITG_GB']
+efiTEM_GB_D = nn_dict['efiTEM_GB']
+efiITG_GB_D = nn_dict['efiITG_GB']
 nns = [
     efe_GB_A,
     efi_GB_A,
+    efeTEM_GB_A,
+    efeITG_GB_A,
+    efiTEM_GB_A,
+    efiITG_GB_A,
     efe_GB_C,
     efi_GB_C,
     efe_GB_D,
     efi_GB_D,
-    nn_dict['efeTEM_GB'],
-    nn_dict['efeETG_GB'],
-    nn_dict['efeITG_GB'],
-    nn_dict['efiTEM_GB'],
-    nn_dict['efiITG_GB']
+    efeETG_GB_D,
+    efeTEM_GB_D,
+    efeITG_GB_D,
+    efiTEM_GB_D,
+    efiITG_GB_D
 ]
 nn = QuaLiKizMultiNN(nns)
 #
