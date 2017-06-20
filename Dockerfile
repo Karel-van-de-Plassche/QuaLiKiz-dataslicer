@@ -16,6 +16,7 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive \
   # Headers for python3-netcdf4
   libhdf5-dev libnetcdf-dev pkg-config
 
+RUN pip install --upgrade pip
 RUN pip install netcdf4
 
 #Run with sudo docker run --rm -v /home/karel/QuaLiKiz-dataslicer:/QuaLiKiz-dataslicer -p 0.0.0.0:5100:5100 -e BOKEH_APP_PATH=/QuaLiKiz-dataslicer/analyse.py -e BOKEH_EXTERNAL_ADDRESS=dataslicer.qualikiz.com -i -t --name dataslicer dataslicer
