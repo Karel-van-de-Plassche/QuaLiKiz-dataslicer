@@ -11,6 +11,7 @@ import time
 from collections import OrderedDict
 from math import ceil
 from itertools import repeat, product
+import pprint
 #import sys
 #
 #sys.path.append(os.path.dirname(os.path.realpath(os.path.join(__file__, '.'))))
@@ -21,6 +22,7 @@ from IPython import embed
 from bokeh_ion_range_slider.ionrangeslider import IonRangeSlider
 from bokeh.plotting import figure, show, reset_output, Figure
 from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox
+from bokeh.models.widgets import Button, Div
 from bokeh.models import HoverTool
 from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, CustomJS, Legend, Line, Circle
@@ -258,6 +260,13 @@ def get_nn_scan_dims(nn, scan_dims):
                 nn_scan_dims.append(dim)
     return nn_scan_dims
 
+def print_slice():
+    slider_dict = read_sliders()
+    text = pprint.pformat(slider_dict, indent=1, width=80)
+    text = "&nbsp;".join(text.split(" "))
+    text = "<br />".join(text.split("\n"))
+    print_slice_text.text = text
+
 
 ############################################################
 # Load dataset                                             #
@@ -333,8 +342,11 @@ sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
 xaxis_name = scan_dims[1]
 xaxis_slider = IonRangeSlider(values=scan_dims, height=56, start=scan_dims.index(xaxis_name))
 xaxis_slider.on_change('range', swap_x)
+print_slice_button = Button(label="Print slice", button_type="success")
+print_slice_button.on_click(print_slice)
+print_slice_text = Div(text="")
 
-toolbar = row(widgetbox([xaxis_slider]), sizing_mode='scale_width')
+toolbar = column([xaxis_slider, print_slice_button, print_slice_text], sizing_mode='scale_width')
 
 ############################################################
 # Create figures                                           #
