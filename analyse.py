@@ -49,10 +49,13 @@ def extract_plotdata(sel_dict):
     slice_ = ds.sel(**sel_dict)
     slice_sep = ds_sep.sel(**sel_dict)
     slice_ = xr.merge([slice_, slice_sep])
+    slice_ = slice_.sel(nions=0)
     slice_.load()
 
-    slice_ = slice_.where(slice_['efe_GB'] < 60)
-    slice_ = slice_.where(slice_['efi_GB'].isel(nions=0) < 60)
+    #slice_ = slice_.where(slice_['efe_GB'] < 60)
+    #slice_ = slice_.where(slice_['efi_GB'] < 60)
+    #slice_ = slice_.where(slice_['efe_GB'] > 0.1)
+    #slice_ = slice_.where(slice_['efi_GB'] > 0.1)
     xaxis = slice_[xaxis_name].data
     plotdata = {}
     for prefix in ['ef', 'pf', 'df', 'pinch', 'grow']:
