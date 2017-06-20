@@ -462,11 +462,11 @@ for fluxname in ['effig', 'pffig', 'pinchfig', 'dffig']:
                 line['glyph'] = glyph
             #figs[figname].legend.location = 'top_left'
             #figs[figname].legend[0].items.clear()
-            if not legend_added:
-                legends = [(line['legend'], [line['glyph']]) for line in lines.values()]
-                legend = Legend(legends=legends, location=(0,0), orientation='horizontal')
-                fig.add_layout(legend, 'above')
-                legend_added = True
+            #if not legend_added:
+            #    legends = [(line['legend'], [line['glyph']]) for line in lines.values()]
+            #    legend = Legend(legends=legends, location=(0,0), orientation='horizontal')
+            #    fig.add_layout(legend, 'above')
+            #    legend_added = True
 ############################################################
 # Create legend, style and data sources for growplots      #
 ###########################################################
