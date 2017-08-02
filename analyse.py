@@ -12,7 +12,6 @@ from collections import OrderedDict
 from math import ceil
 from itertools import repeat, product
 import pprint
-#import sys
 #
 #sys.path.append(os.path.dirname(os.path.realpath(os.path.join(__file__, '.'))))
 #print(sys.path)
@@ -29,6 +28,8 @@ from bokeh.models import ColumnDataSource, CustomJS, Legend, Line, Circle
 from bokeh.palettes import Set1 as sepcolor
 from bokeh.palettes import Plasma256
 #TODO: Add sane checking if loading failed and why
+import sys
+sys.path.append('../QLKNN-develop')
 try:
     from run_model import QuaLiKizNDNN
 except ModuleNotFoundError:
@@ -287,6 +288,7 @@ plot_grow = False
 plot_sepflux = True
 
 sepflux_names = ['ETG', 'ITG', 'TEM']
+#sepflux_names = ['ETG', 'ITG']
 if plot_sepflux:
     flux_suffixes = [''] + ['_' + name for name in sepflux_names]
 else:
@@ -324,6 +326,7 @@ for name in scan_dims:
 
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ", height=56,
+                                       #prefix=name + " = ", height=50,
                                        prettify=round, start=start,
                                        color=color)
 # Link update event to all sliders
@@ -333,9 +336,9 @@ for slider in slider_dict.values():
 # Display the sliders in two columns
 height_block = 300
 slidercol1 = widgetbox(list(slider_dict.values())[:len(slider_dict)//2],
-                       height=height_block)
+                       height=int(.75*height_block))
 slidercol2 = widgetbox(list(slider_dict.values())[len(slider_dict)//2:],
-                       height=height_block)
+                       height=int(.75*height_block))
 sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
 
 # Create slider to select x-axis
