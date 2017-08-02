@@ -18,5 +18,6 @@ RUN LC_ALL=C DEBIAN_FRONTEND=noninteractive \
 
 RUN pip install --upgrade pip
 RUN pip install netcdf4
+RUN pip install peewee psycopg2
 
 #Run with sudo docker run --rm -v /home/karel/QuaLiKiz-dataslicer:/QuaLiKiz-dataslicer -p 0.0.0.0:5100:5100 -e BOKEH_APP_PATH=/QuaLiKiz-dataslicer/analyse.py -e BOKEH_EXTERNAL_ADDRESS=dataslicer.qualikiz.com -i -t --name dataslicer dataslicer
