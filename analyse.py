@@ -69,12 +69,12 @@ def extract_plotdata(sel_dict):
 
     if plot_nn:
         nn_xaxis = np.linspace(xaxis[0], xaxis[-1], 60)
-        input = {xaxis_name: nn_xaxis}
-        for name in nn.feature_names:
+        input = pd.DataFrame({xaxis_name: nn_xaxis})
+        for name in nn._feature_names:
             #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
             if name != xaxis_name:
                 input[name] = np.full_like(nn_xaxis, slice_[name])
-        output = nn.get_outputs(**input)
+        output = nn.get_output(input)
         for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
             try:
                 output[name]
@@ -256,7 +256,7 @@ def updater(attr, old, new):
 def get_nn_scan_dims(nn, scan_dims):
     nn_scan_dims = []
     for dim in scan_dims:
-        if dim in nn.feature_names.values:
+        if dim in nn._feature_names.values:
             if nn.feature_min[dim] != nn.feature_max[dim]:
                 nn_scan_dims.append(dim)
     return nn_scan_dims
@@ -288,7 +288,7 @@ plot_grow = False
 plot_sepflux = True
 
 sepflux_names = ['ETG', 'ITG', 'TEM']
-#sepflux_names = ['ETG', 'ITG']
+#sepflux_names = ['ETG']
 if plot_sepflux:
     flux_suffixes = [''] + ['_' + name for name in sepflux_names]
 else:
@@ -315,11 +315,11 @@ for name in scan_dims:
     color = 'green'
     if plot_nn:
         try:
-            if nn.feature_min[name] == nn.feature_max[name]:
+            if nn._feature_min[name] == nn._feature_max[name]:
                 # If there are features with a specific value, color the bar red
                 # and put marker on value
                 start = int(np.argwhere(
-                    np.isclose(ds[name], nn.feature_min[name], rtol=1e-2)))
+                    np.isclose(ds[name], nn._feature_min[name], rtol=1e-2)))
                 color = 'red'
         except KeyError:
             print('No ' + name + ' value found')
