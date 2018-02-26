@@ -6,15 +6,11 @@ import sys
 from qlknn.NNDB.model import Network
 from qlknn.models.ffnn import QuaLiKizComboNN, QuaLiKizNDNN
 
-ITG_nn = Network.get_by_id(423).to_QuaLiKizNN()
-TEM_nn = Network.get_by_id(166).to_QuaLiKizNN()
-ETG_nn = Network.get_by_id(331).to_QuaLiKizNN()
+nns = []
+nns.append(Network.get_by_id(423).to_QuaLiKizNN())
+nns.append(Network.get_by_id(166).to_QuaLiKizNN())
+nns.append(Network.get_by_id(331).to_QuaLiKizNN())
 
-nns = [
-    ITG_nn,
-    TEM_nn,
-    ETG_nn
-]
 
 target_names = []
 for nn in nns:
