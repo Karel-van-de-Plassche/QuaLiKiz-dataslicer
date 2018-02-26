@@ -31,15 +31,14 @@ from bokeh.palettes import Plasma256
 import sys
 sys.path.append('../QLKNN-develop')
 try:
-    from run_model import QuaLiKizNDNN
-except ModuleNotFoundError:
-    plot_nn = False
-else:
-    try:
-        import mega_nn
-    except:
-        print('No mega NN')
-    plot_nn = True
+    ModuleNotFoundError
+except:
+    ModuleNotFoundError = ImportError
+try:
+    import mega_nn
+except:
+    print('No mega NN')
+plot_nn = True
 
 def takespread(sequence, num, repeat=1):
     length = float(len(sequence))
@@ -272,9 +271,14 @@ def print_slice():
 ############################################################
 # Load dataset                                             #
 ############################################################
-ds = xr.open_dataset('Zeffcombo.nc.1')
+import socket
+if socket.gethostname().startswith('rs'):
+    root_dir = '/Rijnh/Shares/Departments/Fusiefysica/IMT/karel'
+else:
+    root_dir = '.'
+ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.nc.1'))
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
-ds_sep = xr.open_dataset('Zeffcombo.sep.nc.1')
+ds_sep = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.sep.nc.1'))
 ds_sep = ds_sep.drop([x for x in ds_sep.coords if x not in ds_sep.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
