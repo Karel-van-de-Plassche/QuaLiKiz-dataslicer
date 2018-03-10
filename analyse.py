@@ -31,6 +31,10 @@ from bokeh.palettes import Plasma256
 import sys
 sys.path.append('../QLKNN-develop')
 try:
+    ModuleNotFoundError
+except:
+    ModuleNotFoundError = ImportError
+try:
     from qlknn.models.ffnn import QuaLiKizNDNN
 except ModuleNotFoundError:
     plot_nn = False
@@ -277,14 +281,18 @@ def print_slice():
 ############################################################
 # Load dataset                                             #
 ############################################################
-root = '../qlk_data'
-ds = xr.open_dataset(os.path.join(root, 'Zeffcombo.combo.nions0.nc.1'))
+import socket
+if socket.gethostname().startswith('rs'):
+    root_dir = '/Rijnh/Shares/Departments/Fusiefysica/IMT/karel'
+else:
+    root_dir = '../qlk_data'
+ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
 #ds = xr.open_dataset(os.path.join(root, 'Zeffcombo.nc.1'))
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
-ds_grow = xr.open_dataset(os.path.join(root, 'Zeffcombo.grow.nc'))
+ds_grow = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.grow.nc'))
 ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
 
-#ds_sep = xr.open_dataset(os.path.join(root, 'Zeffcombo.sep.nc.1'))
+#ds_sep = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.sep.nc.1'))
 #ds_sep = ds_sep.drop([x for x in ds_sep.coords if x not in ds_sep.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
