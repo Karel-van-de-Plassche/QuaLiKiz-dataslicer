@@ -105,12 +105,16 @@ def extract_plotdata(sel_dict):
                             pass
         if plot_pf:
             prefix = 'pf'
-            plotdata[prefix + 'fig']['nn_elec'] = {}
-            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB']
-            plotdata[prefix + 'fig']['nn_ion0'] = {}
-            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
+            for suffix in flux_suffixes:
+                #for species in ['elec', 'ion0']:
+                for species in ['elec']:
+                    for nn_suffix in ['', '_A', '_B', '_C']:
+                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
+                        try:
+                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
+                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['yaxis'] = output[prefix + species[0] + suffix[1:] + '_GB' + nn_suffix]
+                        except KeyError:
+                            pass
         if plot_df:
             prefix = 'df'
             plotdata[prefix + 'fig']['nn_elec'] = {}
@@ -147,6 +151,8 @@ def extract_plotdata(sel_dict):
         for suffix in flux_suffixes:
             if prefix + 'fig' in figs:
                 for species in ['elec', 'ion0']:
+                    if prefix == 'pf' and species == 'ion0':
+                        continue
                     try:
                         plotdata[prefix + 'fig' + suffix][species] = {}
                         plotdata[prefix + 'fig' + suffix][species]['xaxis'] = xaxis
@@ -385,10 +391,11 @@ if plot_ef:
                                               tools=flux_tools, x_range=x_range)
 
 if plot_pf:
-    figs['pffig']   = Figure(x_axis_label=xaxis_name,
-                             y_axis_label='Particle Flux [GB]',
-                             height=2*height_block, width=2*height_block,
-                             tools=flux_tools, x_range=x_range)
+    for suffix in flux_suffixes:
+        figs['pffig' + suffix]   = Figure(x_axis_label=xaxis_name,
+                                          y_axis_label='Particle Flux ' + suffix[1:] + ' [GB]',
+                                          height=2*height_block, width=2*height_block,
+                                          tools=flux_tools, x_range=x_range)
 if plot_df:
     figs['dffig']   = Figure(x_axis_label=xaxis_name,
                              y_axis_label='Particle Diffusion [GB]',
