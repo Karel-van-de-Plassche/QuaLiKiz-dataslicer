@@ -83,7 +83,12 @@ def extract_plotdata(sel_dict):
                 else:
                     val = slice_[name]
                 input[name] = np.full_like(nn_xaxis, val)
-        output = nn.get_output(input)
+
+        low_bound = np.array([[0 if ('ef' in name) and (not 'div' in name) else -np.inf for name in nn._target_names]]).T
+        low_bound = pd.DataFrame(index=nn._target_names, data=low_bound)
+        high_bound = None
+
+        output = nn.get_output(input, clip_high=False, clip_low=True, high_bound=high_bound, low_bound=low_bound)
         for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
             try:
                 output[name]

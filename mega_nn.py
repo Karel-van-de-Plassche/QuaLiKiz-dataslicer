@@ -29,8 +29,13 @@ if __name__ == '__main__':
     input['Nustar']  = np.full_like(input['Ati'], 0.009995)
     input['logNustar']  = np.full_like(input['Ati'], np.log10(0.009995))
     input['x']  = np.full_like(input['Ati'], 0.449951)
-    fluxes = nn.get_output(input)
+    low_bound = np.array([[0 if ('ef' in name) and (not 'div' in name) else -np.inf for name in nn._target_names]]).T
+    low_bound = pd.DataFrame(index=nn._target_names, data=low_bound)
+    high_bound = None
+
+    fluxes = nn.get_output(input, clip_high=False, clip_low=True, high_bound=high_bound, low_bound=low_bound)
     print(fluxes)
     print(ITG.get_output(input))
     print(TEM.get_output(input))
+    print(ETG.get_output(input))
     embed()
