@@ -31,7 +31,7 @@ from bokeh.palettes import Plasma256
 import sys
 sys.path.append('../QLKNN-develop')
 try:
-    from run_model import QuaLiKizNDNN
+    from qlknn.models.ffnn import QuaLiKizNDNN
 except ModuleNotFoundError:
     plot_nn = False
 else:
@@ -50,9 +50,10 @@ def takespread(sequence, num, repeat=1):
 def extract_plotdata(sel_dict):
     start = time.time()
     slice_ = ds.sel(**sel_dict)
-    slice_sep = ds_sep.sel(**sel_dict)
-    slice_ = xr.merge([slice_, slice_sep])
-    slice_ = slice_.sel(nions=0)
+    #slice_sep = ds_sep.sel(**sel_dict)
+    slice_grow = ds_grow.sel(**sel_dict)
+    slice_ = xr.merge([slice_, slice_grow])
+    #slice_ = slice_.sel(nions=0)
     slice_.load()
 
     #slice_ = slice_.where(slice_['efe_GB'] < 60)
@@ -73,7 +74,11 @@ def extract_plotdata(sel_dict):
         for name in nn._feature_names:
             #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
             if name != xaxis_name:
-                input[name] = np.full_like(nn_xaxis, slice_[name])
+                if name == 'logNustar':
+                    val = np.log10(slice_['Nustar'])
+                else:
+                    val = slice_[name]
+                input[name] = np.full_like(nn_xaxis, val)
         output = nn.get_output(input)
         for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
             try:
@@ -272,10 +277,15 @@ def print_slice():
 ############################################################
 # Load dataset                                             #
 ############################################################
-ds = xr.open_dataset('Zeffcombo.nc.1')
+root = '../qlk_data'
+ds = xr.open_dataset(os.path.join(root, 'Zeffcombo.combo.nions0.nc.1'))
+#ds = xr.open_dataset(os.path.join(root, 'Zeffcombo.nc.1'))
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
-ds_sep = xr.open_dataset('Zeffcombo.sep.nc.1')
-ds_sep = ds_sep.drop([x for x in ds_sep.coords if x not in ds_sep.dims and x not in ['Zi']])
+ds_grow = xr.open_dataset(os.path.join(root, 'Zeffcombo.grow.nc'))
+ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
+
+#ds_sep = xr.open_dataset(os.path.join(root, 'Zeffcombo.sep.nc.1'))
+#ds_sep = ds_sep.drop([x for x in ds_sep.coords if x not in ds_sep.dims and x not in ['Zi']])
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
@@ -431,7 +441,9 @@ plotrow = row(plotrow_figs,
 # Create legend, style and data sources for fluxplots      #
 ############################################################
 sepcolor = sepcolor[9]
-particle_names = ['elec'] + ['Z = ' + str(Zi.data) for Zi in ds['Zi']]
+particle_names = ['elec'] + ['Z = 1']
+
+                             #+ str(Zi.data) for Zi in ds['Zi']]
 style_names = ['', 'nn_', 'nnA_', 'nnB_', 'nnC_']
 style_dash = ['solid', 'dashed', 'dotted', 'dashdot', 'dotdash']
 lines = OrderedDict()
