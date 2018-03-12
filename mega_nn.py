@@ -8,13 +8,14 @@ from IPython import embed
 from qlknn.NNDB.model import Network
 from qlknn.models.ffnn import QuaLiKizNDNN, QuaLiKizComboNN
 
-ITG = Network.get_by_id(834).to_QuaLiKizNN()
-TEM = Network.get_by_id(1049).to_QuaLiKizNN()
-ETG = Network.get_by_id(740).to_QuaLiKizNN()
+ITG = Network.get_by_id(890).to_QuaLiKizNN() #5e-5
+TEM = Network.get_by_id(1049).to_QuaLiKizNN() #5e-5
+ETG = Network.get_by_id(740).to_QuaLiKizNN() #5e-5
+gam = Network.get_by_id(887).to_QuaLiKizNN() #1e-5
 def combo_func(*args):
     return np.hstack(args)
-combo_target_names = ITG._target_names.append(TEM._target_names, ignore_index=True).append(ETG._target_names, ignore_index=True)
-nn = QuaLiKizComboNN(combo_target_names, [ITG, TEM, ETG], combo_func)
+combo_target_names = ITG._target_names.append(TEM._target_names, ignore_index=True).append(ETG._target_names, ignore_index=True).append(gam._target_names, ignore_index=True)
+nn = QuaLiKizComboNN(combo_target_names, [ITG, TEM, ETG, gam], combo_func)
 
 if __name__ == '__main__':
     scann = 24
