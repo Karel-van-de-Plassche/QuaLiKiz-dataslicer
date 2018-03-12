@@ -101,7 +101,7 @@ def extract_plotdata(sel_dict):
             prefix = 'ef'
             for suffix in flux_suffixes:
                 for species in ['elec', 'ion0']:
-                    for nn_suffix in ['', '_A', '_B', '_C']:
+                    for nn_suffix in nn_suffixes:
                         plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
                         try:
                             plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
@@ -113,7 +113,7 @@ def extract_plotdata(sel_dict):
             for suffix in flux_suffixes:
                 #for species in ['elec', 'ion0']:
                 for species in ['elec']:
-                    for nn_suffix in ['', '_A', '_B', '_C']:
+                    for nn_suffix in nn_suffixes:
                         plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
                         try:
                             plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
@@ -464,7 +464,16 @@ sepcolor = sepcolor[9]
 particle_names = ['elec'] + ['Z = 1']
 
                              #+ str(Zi.data) for Zi in ds['Zi']]
-style_names = ['', 'nn_', 'nnA_', 'nnB_', 'nnC_']
+nn_prefixes = []
+nn_suffixes = []
+if nn:
+    nn_prefixes.append('nn_')
+    nn_suffixes.append('')
+    for suffix in ['A', 'B', 'C']:
+        if any([name.endswith('_' + suffix) for name in nn._target_names]):
+            nn_prefixes.append('nn' + suffix + '_')
+            nn_suffixes.append('_' + suffix)
+style_names = [''] + nn_prefixes
 style_dash = ['solid', 'dashed', 'dotted', 'dashdot', 'dotdash']
 lines = OrderedDict()
 for (num_style, style), (num_part, part) in product(enumerate(style_names), enumerate(particle_names)):
@@ -498,13 +507,13 @@ for fluxname in ['effig', 'pffig', 'pinchfig', 'dffig']:
                         glyph = fig.line('xaxis', 'yaxis',
                                            source=source,
                                            color=line['color'],
-                                           #legend=legend[column_name],
+                                           legend=line_name,
                                            line_dash=line['dash'])
                 else:
                     glyph = fig.scatter('xaxis', 'yaxis',
                                           source=source,
                                           color=line['color'],
-                                          #legend=legend[column_name],
+                                          legend=line_name,
                                           size=6)
                 line['glyph'] = glyph
             #figs[figname].legend.location = 'top_left'

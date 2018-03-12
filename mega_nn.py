@@ -9,7 +9,7 @@ from qlknn.NNDB.model import Network
 from qlknn.models.ffnn import QuaLiKizNDNN, QuaLiKizComboNN
 
 ITG = Network.get_by_id(834).to_QuaLiKizNN()
-TEM = Network.get_by_id(848).to_QuaLiKizNN()
+TEM = Network.get_by_id(1049).to_QuaLiKizNN()
 ETG = Network.get_by_id(740).to_QuaLiKizNN()
 def combo_func(*args):
     return np.hstack(args)
