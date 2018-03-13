@@ -85,10 +85,10 @@ def extract_plotdata(sel_dict):
                 input[name] = np.full_like(nn_xaxis, val)
 
         low_bound = np.array([[0 if ('ef' in name) and (not 'div' in name) else -np.inf for name in nn._target_names]]).T
-        low_bound = pd.DataFrame(index=nn._target_names, data=low_bound)
+        low_bound = None
         high_bound = None
 
-        output = nn.get_output(input, clip_high=False, clip_low=True, high_bound=high_bound, low_bound=low_bound)
+        output = nn.get_output(input, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
         for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
             try:
                 output[name]
@@ -167,12 +167,20 @@ def extract_plotdata(sel_dict):
 
     if plot_grow:
         prefix = 'grow'
+        plotdata[prefix + 'fig']['great'] = {}
+        plotdata[prefix + 'fig']['great']['xaxis'] = xaxis
+        plotdata[prefix + 'fig']['great']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] > 2).max(['kthetarhos', 'numsols']).data
         plotdata[prefix + 'fig']['leq'] = {}
         plotdata[prefix + 'fig']['leq']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['leq']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] >= 2).max(['kthetarhos', 'numsols']).data
-        plotdata[prefix + 'fig']['less'] = {}
-        plotdata[prefix + 'fig']['less']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['less']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] < 2).max(['kthetarhos', 'numsols']).data
+        plotdata[prefix + 'fig']['leq']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] <= 2).max(['kthetarhos', 'numsols']).data
+        for nn_suffix in nn_suffixes:
+            for family in ['great', 'leq']:
+                try:
+                    plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family] = {}
+                    plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family]['xaxis'] = nn_xaxis
+                    plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family]['yaxis'] = output['gam_' + family + '_GB' + nn_suffix]
+                except KeyError:
+                    pass
 
     if plot_pinch:
         prefix = 'pinch'
@@ -526,21 +534,21 @@ for fluxname in ['effig', 'pffig', 'pinchfig', 'dffig']:
 ############################################################
 # Create legend, style and data sources for growplots      #
 ###########################################################
-color = OrderedDict([('less', sepcolor[-1]),
-                     ('leq', sepcolor[-2]),
-                     ('nn_less', sepcolor[-1]),
-                     ('nn_leq', sepcolor[-2])])
-line_dash = OrderedDict([('less', 'solid'),
-                         ('leq', 'solid'),
-                         ('nn_less', 'dashed'),
-                         ('nn_leq', 'dashed')])
-legend = OrderedDict([('less', 'kr < 2'),
-                      ('leq', 'kr >= 2'),
-                      ('nn_less', 'nn_kr < 2'),
-                      ('nn_leq', 'nn_kr >= 2')])
-linenames = ['less', 'leq']
+color = OrderedDict([('leq', sepcolor[-1]),
+                     ('great', sepcolor[-2]),
+                     ('nn_leq', sepcolor[-1]),
+                     ('nn_great', sepcolor[-2])])
+line_dash = OrderedDict([('leq', 'solid'),
+                         ('great', 'solid'),
+                         ('nn_leq', 'dashed'),
+                         ('nn_great', 'dashed')])
+legend = OrderedDict([('leq', 'kr <= 2'),
+                      ('great', 'kr > 2'),
+                      ('nn_leq', 'nn_kr <= 2'),
+                      ('nn_great', 'nn_kr > 2')])
+linenames = ['leq', 'great']
 if plot_nn:
-    linenames.extend(['nn_less', 'nn_leq'])
+    linenames.extend(['nn_leq', 'nn_great'])
 
 # link data sources to figures
 for figname in ['growfig']:
