@@ -74,10 +74,13 @@ def extract_plotdata(sel_dict):
 
     if plot_nn:
         nn_xaxis = np.linspace(xaxis[0], xaxis[-1], 60)
-        input = pd.DataFrame({xaxis_name: nn_xaxis})
+        if xaxis_name == 'Nustar' and nn._feature_names.isin(['logNustar']).any():
+            input = pd.DataFrame({'logNustar': np.log10(nn_xaxis)})
+        else:
+            input = pd.DataFrame({xaxis_name: nn_xaxis})
         for name in nn._feature_names:
             #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
-            if name != xaxis_name:
+            if name != xaxis_name and not (name == 'logNustar' and xaxis_name == 'Nustar'):
                 if name == 'logNustar':
                     val = np.log10(slice_['Nustar'])
                 else:
