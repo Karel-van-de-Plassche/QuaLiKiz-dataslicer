@@ -18,7 +18,7 @@ import pprint
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 from IPython import embed
-from bokeh_ion_range_slider.ionrangeslider import IonRangeSlider
+from bokeh_ion_rangeslider import IonRangeSlider
 from bokeh.plotting import figure, show, reset_output, Figure
 from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox
 from bokeh.models.widgets import Button, Div
@@ -34,16 +34,17 @@ try:
     ModuleNotFoundError
 except:
     ModuleNotFoundError = ImportError
+plot_nn = False
 try:
     from qlknn.models.ffnn import QuaLiKizNDNN
 except ModuleNotFoundError:
-    plot_nn = False
+    pass
 else:
     try:
         import mega_nn
+        plot_nn = True
     except:
         print('No mega NN')
-    plot_nn = True
 
 def takespread(sequence, num, repeat=1):
     length = float(len(sequence))
@@ -252,7 +253,7 @@ def read_sliders():
     sel_dict = {}
     for name, slider in slider_dict.items():
         if name != xaxis_name:
-            sel_dict[name] = slider.values[slider.range[0]]
+            sel_dict[name] = slider.values[slider.value[0]]
     return sel_dict
 
 def timer(msg, start):
@@ -322,7 +323,8 @@ ds = ds.swap_dims({'Nustar': 'logNustar'})
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
-plot_freq = True
+#plot_freq = True
+plot_freq = False
 plot_ef = True
 plot_pf = False
 plot_pinch = False
@@ -340,6 +342,8 @@ else:
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
     nn = mega_nn.nn
+else:
+    nn = None
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 
@@ -371,10 +375,10 @@ for name in scan_dims:
                                        prefix=name + " = ", height=56,
                                        #prefix=name + " = ", height=50,
                                        prettify=round, start=start,
-                                       color=color)
+                                       bar_color=color)
 # Link update event to all sliders
 for slider in slider_dict.values():
-    slider.on_change('range', updater)
+    slider.on_change('value', updater)
 
 # Display the sliders in two columns
 height_block = 300
@@ -387,7 +391,7 @@ sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
 # Create slider to select x-axis
 xaxis_name = scan_dims[1]
 xaxis_slider = IonRangeSlider(values=scan_dims, height=56, start=scan_dims.index(xaxis_name))
-xaxis_slider.on_change('range', swap_x)
+xaxis_slider.on_change('value', swap_x)
 print_slice_button = Button(label="Print slice", button_type="success")
 print_slice_button.on_click(print_slice)
 print_slice_text = Div(text="")
