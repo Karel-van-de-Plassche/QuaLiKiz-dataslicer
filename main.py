@@ -60,167 +60,176 @@ def extract_plotdata(sel_dict):
     #slice_ = xr.merge([slice_, slice_grow])
     #slice_ = slice_.sel(nions=0)
     slice_.load()
+    vars = [''.join(var) for var in flux_vars]
+    df_flux = slice_[vars].reset_coords(drop=True).to_dataframe()
+    df_flux.index.name = 'xaxis'
+    if plot_freq:
+        df_freq = slice_[freq_vars].reset_coords(drop=True).to_dataframe()
+    else:
+        df_freq = pd.DataFrame()
+    return df_flux, df_freq
 
     #slice_ = slice_.where(slice_['efe_GB'] < 60)
     #slice_ = slice_.where(slice_['efi_GB'] < 60)
     #slice_ = slice_.where(slice_['efe_GB'] > 0.1)
     #slice_ = slice_.where(slice_['efi_GB'] > 0.1)
-    xaxis = slice_[xaxis_name].data
-    plotdata = {}
-    for prefix in ['ef', 'pf', 'df', 'pinch', 'grow']:
-        plotdata[prefix + 'fig'] = {}
-    for prefix in ['ef', 'pf', 'df', 'pinch']:
-        for suffix in flux_suffixes:
-            plotdata[prefix + 'fig' + suffix] = {}
 
-    if plot_nn:
-        nn_xaxis = np.linspace(xaxis[0], xaxis[-1], 60)
-        if xaxis_name == 'Nustar' and nn._feature_names.isin(['logNustar']).any():
-            input = pd.DataFrame({'logNustar': np.log10(nn_xaxis)})
-        else:
-            input = pd.DataFrame({xaxis_name: nn_xaxis})
-        for name in nn._feature_names:
-            #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
-            if name != xaxis_name and not (name == 'logNustar' and xaxis_name == 'Nustar'):
-                if name == 'logNustar':
-                    val = np.log10(slice_['Nustar'])
-                else:
-                    val = slice_[name]
-                input[name] = np.full_like(nn_xaxis, val)
+    #xaxis = slice_[xaxis_name].data
+    #plotdata = {}
+    #for prefix in ['ef', 'pf', 'df', 'pinch', 'grow']:
+    #    plotdata[prefix + 'fig'] = {}
+    #for prefix in ['ef', 'pf', 'df', 'pinch']:
+    #    for suffix in flux_suffixes:
+    #        plotdata[prefix + 'fig' + suffix] = {}
 
-        low_bound = np.array([[0 if ('ef' in name) and (not 'div' in name) else -np.inf for name in nn._target_names]]).T
-        low_bound = None
-        high_bound = None
+    #if plot_nn:
+    #    nn_xaxis = np.linspace(xaxis[0], xaxis[-1], 60)
+    #    if xaxis_name == 'Nustar' and nn._feature_names.isin(['logNustar']).any():
+    #        input = pd.DataFrame({'logNustar': np.log10(nn_xaxis)})
+    #    else:
+    #        input = pd.DataFrame({xaxis_name: nn_xaxis})
+    #    for name in nn._feature_names:
+    #        #input = df[[x for x in nn.feature_names if x != xaxis_name]].groupby(level=0).max().reset_index()
+    #        if name != xaxis_name and not (name == 'logNustar' and xaxis_name == 'Nustar'):
+    #            if name == 'logNustar':
+    #                val = np.log10(slice_['Nustar'])
+    #            else:
+    #                val = slice_[name]
+    #            input[name] = np.full_like(nn_xaxis, val)
 
-        output = nn.get_output(input, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
-        for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
-            try:
-                output[name]
-            except KeyError:
-                output[name] = np.zeros_like(output.index)
+    #    low_bound = np.array([[0 if ('ef' in name) and (not 'div' in name) else -np.inf for name in nn._target_names]]).T
+    #    low_bound = None
+    #    high_bound = None
+
+    #    output = nn.get_output(input, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
+    #    for name in ['efe_GB', 'efi_GB', 'pfe_GB']:
+    #        try:
+    #            output[name]
+    #        except KeyError:
+    #            output[name] = np.zeros_like(output.index)
 
 
-        #timer('nn eval at ', start)
-        if plot_ef:
-            prefix = 'ef'
-            for suffix in flux_suffixes:
-                for species in ['elec', 'ion0']:
-                    for nn_suffix in nn_suffixes:
-                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
-                        try:
-                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
-                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['yaxis'] = output[prefix + species[0] + suffix[1:] + '_GB' + nn_suffix]
-                        except KeyError:
-                            pass
-        if plot_pf:
-            prefix = 'pf'
-            for suffix in flux_suffixes:
-                #for species in ['elec', 'ion0']:
-                for species in ['elec']:
-                    for nn_suffix in nn_suffixes:
-                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
-                        try:
-                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
-                            plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['yaxis'] = output[prefix + species[0] + suffix[1:] + '_GB' + nn_suffix]
-                        except KeyError:
-                            pass
-        if plot_df:
-            prefix = 'df'
-            plotdata[prefix + 'fig']['nn_elec'] = {}
-            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB']
-            plotdata[prefix + 'fig']['nn_ion0'] = {}
-            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
-        if plot_pinch:
-            prefix = 'pinch'
-            plotdata[prefix + 'fig']['nn_elec'] = {}
-            plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output['vte_GB_plus_vce_GB']
-            plotdata[prefix + 'fig']['nn_ion0'] = {}
-            plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output['vti_GB_plus_vci_GB']
-            plotdata[prefix + 'fig']['nn2_elec'] = {}
-            plotdata[prefix + 'fig']['nn2_elec']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn2_elec']['yaxis'] = output['vte_GB_plus_vce_GB2']
-            plotdata[prefix + 'fig']['nn2_ion0'] = {}
-            plotdata[prefix + 'fig']['nn2_ion0']['xaxis'] = nn_xaxis
-            plotdata[prefix + 'fig']['nn2_ion0']['yaxis'] = output['vti_GB_plus_vci_GB2']
-        #if plot_grow:
-        #    prefix = 'grow'
-        #    plotdata[prefix + 'fig']['nn_leq'] = {}
-        #    plotdata[prefix + 'fig']['nn_leq']['xaxis'] = nn_xaxis
-        #    plotdata[prefix + 'fig']['nn_leq']['yaxis'] = output['gam_GB_leq2max']
-        #    plotdata[prefix + 'fig']['nn_less'] = {}
-        #    plotdata[prefix + 'fig']['nn_less']['xaxis'] = nn_xaxis
-        #    plotdata[prefix + 'fig']['nn_less']['yaxis'] = output['gam_GB_less2max']
+    #    #timer('nn eval at ', start)
+    #    if plot_ef:
+    #        prefix = 'ef'
+    #        for suffix in flux_suffixes:
+    #            for species in ['elec', 'ion0']:
+    #                for nn_suffix in nn_suffixes:
+    #                    plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
+    #                    try:
+    #                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
+    #                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['yaxis'] = output[prefix + species[0] + suffix[1:] + '_GB' + nn_suffix]
+    #                    except KeyError:
+    #                        pass
+    #    if plot_pf:
+    #        prefix = 'pf'
+    #        for suffix in flux_suffixes:
+    #            #for species in ['elec', 'ion0']:
+    #            for species in ['elec']:
+    #                for nn_suffix in nn_suffixes:
+    #                    plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species] = {}
+    #                    try:
+    #                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['xaxis'] = nn_xaxis
+    #                        plotdata[prefix + 'fig' + suffix]['nn' + nn_suffix[1:] + '_' + species]['yaxis'] = output[prefix + species[0] + suffix[1:] + '_GB' + nn_suffix]
+    #                    except KeyError:
+    #                        pass
+    #    if plot_df:
+    #        prefix = 'df'
+    #        plotdata[prefix + 'fig']['nn_elec'] = {}
+    #        plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
+    #        plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output[prefix + 'e_GB']
+    #        plotdata[prefix + 'fig']['nn_ion0'] = {}
+    #        plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
+    #        plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output[prefix + 'i_GB']
+    #    if plot_pinch:
+    #        prefix = 'pinch'
+    #        plotdata[prefix + 'fig']['nn_elec'] = {}
+    #        plotdata[prefix + 'fig']['nn_elec']['xaxis'] = nn_xaxis
+    #        plotdata[prefix + 'fig']['nn_elec']['yaxis'] = output['vte_GB_plus_vce_GB']
+    #        plotdata[prefix + 'fig']['nn_ion0'] = {}
+    #        plotdata[prefix + 'fig']['nn_ion0']['xaxis'] = nn_xaxis
+    #        plotdata[prefix + 'fig']['nn_ion0']['yaxis'] = output['vti_GB_plus_vci_GB']
+    #        plotdata[prefix + 'fig']['nn2_elec'] = {}
+    #        plotdata[prefix + 'fig']['nn2_elec']['xaxis'] = nn_xaxis
+    #        plotdata[prefix + 'fig']['nn2_elec']['yaxis'] = output['vte_GB_plus_vce_GB2']
+    #        plotdata[prefix + 'fig']['nn2_ion0'] = {}
+    #        plotdata[prefix + 'fig']['nn2_ion0']['xaxis'] = nn_xaxis
+    #        plotdata[prefix + 'fig']['nn2_ion0']['yaxis'] = output['vti_GB_plus_vci_GB2']
+    #    #if plot_grow:
+    #    #    prefix = 'grow'
+    #    #    plotdata[prefix + 'fig']['nn_leq'] = {}
+    #    #    plotdata[prefix + 'fig']['nn_leq']['xaxis'] = nn_xaxis
+    #    #    plotdata[prefix + 'fig']['nn_leq']['yaxis'] = output['gam_GB_leq2max']
+    #    #    plotdata[prefix + 'fig']['nn_less'] = {}
+    #    #    plotdata[prefix + 'fig']['nn_less']['xaxis'] = nn_xaxis
+    #    #    plotdata[prefix + 'fig']['nn_less']['yaxis'] = output['gam_GB_less2max']
 
-        #timer('nn dictized at ', start)
-    for prefix in ['ef', 'pf', 'df']:
-        for suffix in flux_suffixes:
-            if prefix + 'fig' in figs:
-                for species in ['elec', 'ion0']:
-                    if prefix == 'pf' and species == 'ion0':
-                        continue
-                    try:
-                        plotdata[prefix + 'fig' + suffix][species] = {}
-                        plotdata[prefix + 'fig' + suffix][species]['xaxis'] = xaxis
-                        plotdata[prefix + 'fig' + suffix][species]['yaxis'] = slice_[prefix + species[0] + suffix[1:] + '_GB'].data
-                    except KeyError:
-                        pass
+    #    #timer('nn dictized at ', start)
+    #for prefix in ['ef', 'pf', 'df']:
+    #    for suffix in flux_suffixes:
+    #        if prefix + 'fig' in figs:
+    #            for species in ['elec', 'ion0']:
+    #                if prefix == 'pf' and species == 'ion0':
+    #                    continue
+    #                try:
+    #                    plotdata[prefix + 'fig' + suffix][species] = {}
+    #                    plotdata[prefix + 'fig' + suffix][species]['xaxis'] = xaxis
+    #                    plotdata[prefix + 'fig' + suffix][species]['yaxis'] = slice_[prefix + species[0] + suffix[1:] + '_GB'].data
+    #                except KeyError:
+    #                    pass
 
-    if plot_grow:
-        prefix = 'grow'
-        plotdata[prefix + 'fig']['great'] = {}
-        plotdata[prefix + 'fig']['great']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['great']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] > 2).max(['kthetarhos', 'numsols']).data
-        plotdata[prefix + 'fig']['leq'] = {}
-        plotdata[prefix + 'fig']['leq']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['leq']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] <= 2).max(['kthetarhos', 'numsols']).data
-        for nn_suffix in nn_suffixes:
-            for family in ['great', 'leq']:
-                try:
-                    plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family] = {}
-                    plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family]['xaxis'] = nn_xaxis
-                    plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family]['yaxis'] = output['gam_' + family + '_GB' + nn_suffix]
-                except KeyError:
-                    pass
+    #if plot_grow:
+    #    prefix = 'grow'
+    #    plotdata[prefix + 'fig']['great'] = {}
+    #    plotdata[prefix + 'fig']['great']['xaxis'] = xaxis
+    #    plotdata[prefix + 'fig']['great']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] > 2).max(['kthetarhos', 'numsols']).data
+    #    plotdata[prefix + 'fig']['leq'] = {}
+    #    plotdata[prefix + 'fig']['leq']['xaxis'] = xaxis
+    #    plotdata[prefix + 'fig']['leq']['yaxis'] = slice_['gam_GB'].where(slice_['kthetarhos'] <= 2).max(['kthetarhos', 'numsols']).data
+    #    for nn_suffix in nn_suffixes:
+    #        for family in ['great', 'leq']:
+    #            try:
+    #                plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family] = {}
+    #                plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family]['xaxis'] = nn_xaxis
+    #                plotdata[prefix + 'fig']['nn' + nn_suffix[1:] + '_' + family]['yaxis'] = output['gam_' + family + '_GB' + nn_suffix]
+    #            except KeyError:
+    #                pass
 
-    if plot_pinch:
-        prefix = 'pinch'
-        for ii, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
-            if ii > 0:
-                break
-            plotdata[prefix + 'fig']['ion' + str(ii)] = {}
-            plotdata[prefix + 'fig']['ion' + str(ii)]['xaxis'] = xaxis
-            plotdata[prefix + 'fig']['ion' + str(ii)]['yaxis'] = vti.data + vci.data
-        plotdata[prefix + 'fig']['elec'] = {}
-        plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
-        plotdata[prefix + 'fig']['elec']['yaxis'] = slice_['vte_GB'].data + slice_['vte_GB'].data
-    #timer('fluxed at ', start)
+    #if plot_pinch:
+    #    prefix = 'pinch'
+    #    for ii, (vti, vci) in enumerate(zip(slice_['vti_GB'].T, slice_['vci_GB'].T)):
+    #        if ii > 0:
+    #            break
+    #        plotdata[prefix + 'fig']['ion' + str(ii)] = {}
+    #        plotdata[prefix + 'fig']['ion' + str(ii)]['xaxis'] = xaxis
+    #        plotdata[prefix + 'fig']['ion' + str(ii)]['yaxis'] = vti.data + vci.data
+    #    plotdata[prefix + 'fig']['elec'] = {}
+    #    plotdata[prefix + 'fig']['elec']['xaxis'] = xaxis
+    #    plotdata[prefix + 'fig']['elec']['yaxis'] = slice_['vte_GB'].data + slice_['vte_GB'].data
+    ##timer('fluxed at ', start)
 
-    #if all([fig in figs for fig in ['gamlow', 'gamhigh', 'omelow', 'omehigh']]):
-    if plot_freq:
-        for suff in ['low', 'high']:
-            for pre in ['gam', 'ome']:
-                plotdata[pre + suff] = {}
-        for numsol, __ in enumerate(slice_['numsols'].data):
-            for suff in ['low', 'high']:
-                for pre in ['gam', 'ome']:
-                    if suff == 'low':
-                        kthetarhos = slice(None, kthetarhos_cutoff_index)
-                    else:
-                        kthetarhos = slice(kthetarhos_cutoff_index, None)
-                    subslice = slice_[pre + '_GB'].isel(numsols=numsol, kthetarhos=kthetarhos)
-                    subslice = subslice.where(subslice != 0)
+    ##if all([fig in figs for fig in ['gamlow', 'gamhigh', 'omelow', 'omehigh']]):
+    #if plot_freq:
+    #    for suff in ['low', 'high']:
+    #        for pre in ['gam', 'ome']:
+    #            plotdata[pre + suff] = {}
+    #    for numsol, __ in enumerate(slice_['numsols'].data):
+    #        for suff in ['low', 'high']:
+    #            for pre in ['gam', 'ome']:
+    #                if suff == 'low':
+    #                    kthetarhos = slice(None, kthetarhos_cutoff_index)
+    #                else:
+    #                    kthetarhos = slice(kthetarhos_cutoff_index, None)
+    #                subslice = slice_[pre + '_GB'].isel(numsols=numsol, kthetarhos=kthetarhos)
+    #                subslice = subslice.where(subslice != 0)
 
-                    for ii, subsubslice in enumerate(subslice):
-                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))] = {}
-                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['xaxis'] = subslice['kthetarhos'].data
-                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['yaxis'] = subsubslice.data
-                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['curval'] = np.full_like(subslice['kthetarhos'], subsubslice[xaxis_name].data)
-                        plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['cursol'] = np.full_like(subslice['kthetarhos'], int(numsol))
-    #timer('freq at ', start)
+    #                for ii, subsubslice in enumerate(subslice):
+    #                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))] = {}
+    #                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['xaxis'] = subslice['kthetarhos'].data
+    #                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['yaxis'] = subsubslice.data
+    #                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['curval'] = np.full_like(subslice['kthetarhos'], subsubslice[xaxis_name].data)
+    #                    plotdata[pre + suff]['dim' + str(ii) + 'sol' + str(int(numsol))]['cursol'] = np.full_like(subslice['kthetarhos'], int(numsol))
+    ##timer('freq at ', start)
     return plotdata
 
 
@@ -252,8 +261,10 @@ def swap_x(attr, old, new):
 def read_sliders():
     sel_dict = {}
     for name, slider in slider_dict.items():
+        print(name, slider.value, slider.values)
         if name != xaxis_name:
-            sel_dict[name] = slider.values[slider.value[0]]
+            print(slider.value)
+            sel_dict[name] = slider.value[0]
     return sel_dict
 
 def timer(msg, start):
@@ -268,14 +279,18 @@ def updater(attr, old, new):
         return
     #timer('Read sliders ', start)
 
-    plotdata = extract_plotdata(sel_dict)
+    df_flux, df_grow = extract_plotdata(sel_dict)
     #timer('Extracted plotdata', start)
-    for figpre in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
-        for suffix in flux_suffixes:
-            figname = figpre + suffix
-            if figname in figs:
-                for column_name in plotdata[figname]:
-                    sources[figname][column_name].data = plotdata[figname][column_name]
+    #for figpre in ['effig', 'pffig', 'dffig', 'pinchfig', 'growfig']:
+    #    for suffix in flux_suffixes:
+    #        figname = figpre + suffix
+    #        if figname in figs:
+    #            for column_name in plotdata[figname]:
+    #                sources[figname][column_name].data = plotdata[figname][column_name]
+    print('hello?')
+    print(len(df_flux.reset_index()))
+    #flux_source.data = df_flux
+    flux_source.data = dict(df_flux.reset_index())
     #timer('wrote flux sources', start)
     if plot_freq:
         for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
@@ -323,7 +338,7 @@ ds = ds.swap_dims({'Nustar': 'logNustar'})
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
-plot_freq = True
+plot_freq = False
 #plot_freq = False
 plot_ef = True
 plot_pf = False
@@ -331,11 +346,12 @@ plot_pinch = False
 plot_df = False
 plot_grow = False
 plot_sepflux = True
+norm = '_GB'
 
 sepflux_names = ['ETG', 'ITG', 'TEM']
 #sepflux_names = ['ETG']
 if plot_sepflux:
-    flux_suffixes = [''] + ['_' + name for name in sepflux_names]
+    flux_suffixes = [''] + [name for name in sepflux_names]
 else:
     flux_suffixes = ['']
 
@@ -346,6 +362,19 @@ else:
     nn = None
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
+flux_vars = []
+if plot_ef:
+    pre = 'ef'
+    for suff in flux_suffixes:
+        for species in ['i', 'e']:
+            if (species == 'i' and suff != 'ETG') or species == 'e':
+                flux_vars.append((pre, species, suff, norm))
+if plot_freq:
+    freq_vars = [name for name in ds.data_vars if any(var in name for var in ['ome' + norm, 'gam' + norm])]
+else:
+    freq_vars = []
+
+ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + [''.join(var) for var in flux_vars]])
 
 ############################################################
 # Create sliders                                           #
@@ -358,7 +387,7 @@ round = CustomJS(code="""
 slider_dict = OrderedDict()
 for name in scan_dims:
     # By default, color the slider green and put marker halfway
-    start = int(ds[name].size/2)
+    start = float(ds[name].isel(**{name: int(ds[name].size/2)}))
     color = 'green'
     if plot_nn:
         try:
@@ -376,7 +405,7 @@ for name in scan_dims:
                                        #prefix=name + " = ", height=50,
                                        value=(start, start),
                                        prettify=round, start=start,
-                                       bar_color=color)
+                                       bar_color=color, title='', show_value=False)
 # Link update event to all sliders
 for slider in slider_dict.values():
     slider.on_change('value', updater)
@@ -392,7 +421,7 @@ sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
 # Create slider to select x-axis
 xaxis_name = scan_dims[1]
 start = scan_dims.index(xaxis_name)
-xaxis_slider = IonRangeSlider(values=scan_dims, height=56, start=scan_dims.index(xaxis_name), value=(start, start))
+xaxis_slider = IonRangeSlider(values=scan_dims, height=56, start=scan_dims.index(xaxis_name), value=(start, start), title='')
 xaxis_slider.on_change('value', swap_x)
 print_slice_button = Button(label="Print slice", button_type="success")
 print_slice_button.on_click(print_slice)
@@ -406,36 +435,25 @@ toolbar = column([xaxis_slider, print_slice_button, print_slice_text], sizing_mo
 flux_tools = ['box_zoom,pan,zoom_in,zoom_out,reset,save']
 
 x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
+sel_dict = read_sliders()
+df_flux, df_freq = extract_plotdata(sel_dict)
+flux_source = ColumnDataSource(df_flux)
 figs = OrderedDict()
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
-if plot_ef:
-        for suffix in flux_suffixes:
-            figs['effig' + suffix]   = Figure(x_axis_label=xaxis_name,
-                                              y_axis_label='Energy Flux ' + suffix[1:] + ' [GB]',
+for figname in ['ef', 'pf', 'grow']:
+    if ((figname == 'ef' and not plot_ef) or
+        (figname == 'pf' and not plot_pf) or
+        (figname == 'grow' and not plot_grow)):
+            continue
+    for suffix in flux_suffixes:
+        if figname == 'pffix' and suffix == '_ETG':
+            continue
+        if figname == 'grow' and suffix != '':
+            continue
+        figs[figname + suffix]   = Figure(x_axis_label=xaxis_name,
+                                              y_axis_label='Energy Flux ' + suffix + ' [GB]',
                                               height=2*height_block, width=2*height_block,
                                               tools=flux_tools, x_range=x_range)
-
-if plot_pf:
-    for suffix in flux_suffixes:
-        figs['pffig' + suffix]   = Figure(x_axis_label=xaxis_name,
-                                          y_axis_label='Particle Flux ' + suffix[1:] + ' [GB]',
-                                          height=2*height_block, width=2*height_block,
-                                          tools=flux_tools, x_range=x_range)
-if plot_df:
-    figs['dffig']   = Figure(x_axis_label=xaxis_name,
-                             y_axis_label='Particle Diffusion [GB]',
-                             height=2*height_block, width=2*height_block,
-                             tools=flux_tools, x_range=x_range)
-if plot_pinch:
-    figs['pinchfig']   = Figure(x_axis_label=xaxis_name,
-                             y_axis_label='Particle Pinch [GB]',
-                             height=2*height_block, width=2*height_block,
-                             tools=flux_tools, x_range=x_range)
-if plot_grow:
-    figs['growfig']   = Figure(x_axis_label=xaxis_name,
-                             y_axis_label='Maximum Growth Rate [GB]',
-                             height=2*height_block, width=2*height_block,
-                             tools=flux_tools, x_range=x_range)
 
 for fig in figs.values():
     hover = HoverTool()
@@ -481,61 +499,63 @@ plotrow = row(plotrow_figs,
 # Create legend, style and data sources for fluxplots      #
 ############################################################
 sepcolor = sepcolor[9]
-particle_names = ['elec'] + ['Z = 1']
-
-                             #+ str(Zi.data) for Zi in ds['Zi']]
-nn_prefixes = []
-nn_suffixes = []
+particle_names = ['e'] + ['i']
 if nn:
-    nn_prefixes.append('nn_')
-    nn_suffixes.append('')
-    for suffix in ['A', 'B', 'C']:
-        if any([name.endswith('_' + suffix) for name in nn._target_names]):
-            nn_prefixes.append('nn' + suffix + '_')
-            nn_suffixes.append('_' + suffix)
-style_names = [''] + nn_prefixes
+    nn_names = ['nn_0']
+else:
+    nn_names = []
+colors = {}
+for ii, species in enumerate(particle_names):
+    colors[species] = sepcolor[ii]
+
 style_dash = ['solid', 'dashed', 'dotted', 'dashdot', 'dotdash']
-lines = OrderedDict()
-for (num_style, style), (num_part, part) in product(enumerate(style_names), enumerate(particle_names)):
-    if num_part > 1:
-        continue
-    if part == 'elec':
-        name = 'elec'
-    else:
-        name = 'ion' + str(num_part - 1)
-    name = style + name
-    line = lines[name] = {}
-    line['color'] = sepcolor[num_part]
-    line['dash'] = style_dash[num_style]
-    line['legend'] = style + part
+dashes = {'qlk': 'scatter'}
+for ii, name in enumerate(nn_names):
+    dashes[name] = style_dash[ii]
 
 # link data sources to figures
-legend_added = False
-sources = {}
-for fluxname in ['effig', 'pffig', 'pinchfig', 'dffig']:
-    for flux_suffix in flux_suffixes:
-        figname = fluxname + flux_suffix
-        if figname in figs:
-            sources[figname] = OrderedDict()
-            fig = figs[figname]
-            for line_name, line in lines.items():
-                source = sources[figname][line_name] = ColumnDataSource({'xaxis': [],
-                                                                         'yaxis': []})
-                if 'nn' in line_name:
-                    if plot_nn:
+for fluxname in flux_vars:
+    pre, species, suff, norm = fluxname
+    fig = figs[pre+suff]
+    for linetype in dashes.keys():
+        species_id = species[0]
+        print(species_id, linetype)
+        if linetype == 'qlk':
+            print( pre+species_id+suff+norm)
+            glyph = fig.scatter('xaxis', pre+species_id+suff+norm,
+                                source=flux_source,
+                                color=colors[species_id],
+                                legend=species
+                               )
+        else:
+            print( pre+species_id+suff+norm)
+            glyph = fig.line('xaxis', pre+species_id+suff+norm,
+                             source=flux_source,
+                             color=colors[species_id],
+                             line_dash=dashes[name],
+                             legend=linetype
+                             )
 
-                        glyph = fig.line('xaxis', 'yaxis',
-                                           source=source,
-                                           color=line['color'],
-                                           legend=line_name,
-                                           line_dash=line['dash'])
-                else:
-                    glyph = fig.scatter('xaxis', 'yaxis',
-                                          source=source,
-                                          color=line['color'],
-                                          legend=line_name,
-                                          size=6)
-                line['glyph'] = glyph
+            #fig = figs[figname]
+            #for line_name, line in lines.items():
+            #    #source = sources[figname][line_name] = ColumnDataSource({'xaxis': [],
+            #    #                                                        'yaxis': []})
+            #    if 'nn' in line_name:
+            #        if plot_nn:
+
+            #            glyph = fig.line('xaxis', 'yaxis',
+            #                               source=flux_source,
+            #                               color=line['color'],
+            #                               legend=line_name,
+            #                               line_dash=line['dash'])
+            #    else:
+            #        embed()
+            #        glyph = fig.scatter(xaxis_name, 'yaxis',
+            #                            source=flux_source,
+            #                            color=line['color'],
+            #                            legend=line_name,
+            #                            size=6)
+            #    line['glyph'] = glyph
             #figs[figname].legend.location = 'top_left'
             #figs[figname].legend[0].items.clear()
             #if not legend_added:
