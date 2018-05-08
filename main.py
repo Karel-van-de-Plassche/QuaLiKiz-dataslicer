@@ -54,14 +54,14 @@ def takespread(sequence, num, repeat=1):
 
 def extract_plotdata(sel_dict):
     start = time.time()
-    slice_ = ds.sel(**sel_dict)
+    print(sel_dict)
+    slice_ = ds.sel(**sel_dict, method='nearest')
     #slice_sep = ds_sep.sel(**sel_dict)
     #slice_grow = ds_grow.sel(**sel_dict)
     #slice_ = xr.merge([slice_, slice_grow])
     #slice_ = slice_.sel(nions=0)
     slice_.load()
-    vars = [''.join(var) for var in flux_vars]
-    df_flux = slice_[vars].reset_coords(drop=True).to_dataframe()
+    df_flux = slice_[fluxlike_vars].reset_coords(drop=True).to_dataframe()
     df_flux.index.name = 'xaxis'
     if plot_freq:
         df_freq = slice_[freq_vars].reset_coords(drop=True).to_dataframe()
@@ -261,9 +261,7 @@ def swap_x(attr, old, new):
 def read_sliders():
     sel_dict = {}
     for name, slider in slider_dict.items():
-        print(name, slider.value, slider.values)
         if name != xaxis_name:
-            print(slider.value)
             sel_dict[name] = slider.value[0]
     return sel_dict
 
@@ -287,8 +285,6 @@ def updater(attr, old, new):
     #        if figname in figs:
     #            for column_name in plotdata[figname]:
     #                sources[figname][column_name].data = plotdata[figname][column_name]
-    print('hello?')
-    print(len(df_flux.reset_index()))
     #flux_source.data = df_flux
     flux_source.data = dict(df_flux.reset_index())
     #timer('wrote flux sources', start)
@@ -363,18 +359,27 @@ else:
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 flux_vars = []
-if plot_ef:
-    pre = 'ef'
+for pre in ['ef', 'pf']:
+    if ((pre == 'ef' and not plot_ef) or
+        (pre == 'pf' and not plot_pf)):
+        continue
     for suff in flux_suffixes:
         for species in ['i', 'e']:
-            if (species == 'i' and suff != 'ETG') or species == 'e':
-                flux_vars.append((pre, species, suff, norm))
+            if ((species == 'i' and suff == 'ETG') or
+                (pre == 'pf' and species == 'e')):
+                continue
+            flux_vars.append((pre, species, suff, norm))
 if plot_freq:
     freq_vars = [name for name in ds.data_vars if any(var in name for var in ['ome' + norm, 'gam' + norm])]
 else:
     freq_vars = []
 
-ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + [''.join(var) for var in flux_vars]])
+if plot_grow:
+    grow_vars = [('gam_leq', '', '', norm)]
+else:
+    grow_vars = []
+fluxlike_vars = [''.join(var) for var in flux_vars + grow_vars]
+ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
 ############################################################
 # Create sliders                                           #
@@ -388,23 +393,25 @@ slider_dict = OrderedDict()
 for name in scan_dims:
     # By default, color the slider green and put marker halfway
     start = float(ds[name].isel(**{name: int(ds[name].size/2)}))
+    #start = int(ds[name].size/2)
+    print(name, start)
     color = 'green'
-    if plot_nn:
-        try:
-            if nn._feature_min[name] == nn._feature_max[name]:
-                # If there are features with a specific value, color the bar red
-                # and put marker on value
-                start = int(np.argwhere(
-                    np.isclose(ds[name], nn._feature_min[name], rtol=1e-2)))
-                color = 'red'
-        except KeyError:
-            print('No ' + name + ' value found')
+    #if plot_nn:
+        #try:
+        #    if nn._feature_min[name] == nn._feature_max[name]:
+        #        # If there are features with a specific value, color the bar red
+        #        # and put marker on value
+        #        start = int(np.argwhere(
+        #            np.isclose(ds[name], nn._feature_min[name], rtol=1e-2)))
+        #        color = 'red'
+        #except KeyError:
+        #    print('No ' + name + ' value found')
 
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ", height=56,
                                        #prefix=name + " = ", height=50,
                                        value=(start, start),
-                                       prettify=round, start=start,
+                                       prettify=round,
                                        bar_color=color, title='', show_value=False)
 # Link update event to all sliders
 for slider in slider_dict.values():
@@ -440,20 +447,25 @@ df_flux, df_freq = extract_plotdata(sel_dict)
 flux_source = ColumnDataSource(df_flux)
 figs = OrderedDict()
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
+labels = {
+    'ef': 'Energy Flux',
+    'pf': 'Particle flux',
+    'grow': 'Growth rate'
+          }
 for figname in ['ef', 'pf', 'grow']:
     if ((figname == 'ef' and not plot_ef) or
         (figname == 'pf' and not plot_pf) or
         (figname == 'grow' and not plot_grow)):
             continue
     for suffix in flux_suffixes:
-        if figname == 'pffix' and suffix == '_ETG':
+        if figname == 'pf' and suffix == 'ETG':
             continue
         if figname == 'grow' and suffix != '':
             continue
         figs[figname + suffix]   = Figure(x_axis_label=xaxis_name,
-                                              y_axis_label='Energy Flux ' + suffix + ' [GB]',
-                                              height=2*height_block, width=2*height_block,
-                                              tools=flux_tools, x_range=x_range)
+                                          y_axis_label=labels[figname] + ' ' + suffix + ' [' + norm[1:] + ']',
+                                          height=2*height_block, width=2*height_block,
+                                          tools=flux_tools, x_range=x_range)
 
 for fig in figs.values():
     hover = HoverTool()
@@ -566,43 +578,47 @@ for fluxname in flux_vars:
 ############################################################
 # Create legend, style and data sources for growplots      #
 ###########################################################
-color = OrderedDict([('leq', sepcolor[-1]),
-                     ('great', sepcolor[-2]),
-                     ('nn_leq', sepcolor[-1]),
-                     ('nn_great', sepcolor[-2])])
-line_dash = OrderedDict([('leq', 'solid'),
-                         ('great', 'solid'),
-                         ('nn_leq', 'dashed'),
-                         ('nn_great', 'dashed')])
-legend = OrderedDict([('leq', 'kr <= 2'),
-                      ('great', 'kr > 2'),
-                      ('nn_leq', 'nn_kr <= 2'),
-                      ('nn_great', 'nn_kr > 2')])
-linenames = ['leq', 'great']
-if plot_nn:
-    linenames.extend(['nn_leq', 'nn_great'])
-
+colors = {'gam_leq': sepcolor[-1]}
 # link data sources to figures
-for figname in ['growfig']:
-    if figname in figs:
-        sources[figname] = OrderedDict()
-        for ii, column_name in enumerate(linenames):
-            sources[figname][column_name] = ColumnDataSource({'xaxis': [],
-                                                              'yaxis': []})
-            if 'nn' in column_name:
-                if plot_nn:
-                    figs[figname].line('xaxis', 'yaxis',
-                                       source=sources[figname][column_name],
-                                       color=color[column_name],
-                                       legend=legend[column_name],
-                                       line_dash=line_dash[column_name])
-            else:
-                figs[figname].scatter('xaxis', 'yaxis',
-                                      source=sources[figname][column_name],
-                                      color=color[column_name],
-                                      legend=legend[column_name],
-                                      size=6)
-        figs[figname].legend.location = 'top_left'
+for fluxname in grow_vars:
+    pre, species, suff, norm = fluxname
+    fig = figs['grow']
+    for linetype in dashes.keys():
+        if linetype == 'qlk':
+            print( pre+species_id+suff+norm)
+            glyph = fig.scatter('xaxis', pre+suff+norm,
+                                source=flux_source,
+                                color=colors[pre+suff],
+                                legend=species
+                               )
+        else:
+            print( pre+species_id+suff+norm)
+            glyph = fig.line('xaxis', pre+suff+norm,
+                             source=flux_source,
+                             color=colors[pre+suff],
+                             line_dash=dashes[name],
+                             legend=linetype
+                             )
+#for figname in ['growfig']:
+#    if figname in figs:
+#        sources[figname] = OrderedDict()
+#        for ii, column_name in enumerate(linenames):
+#            sources[figname][column_name] = ColumnDataSource({'xaxis': [],
+#                                                              'yaxis': []})
+#            if 'nn' in column_name:
+#                if plot_nn:
+#                    figs[figname].line('xaxis', 'yaxis',
+#                                       source=sources[figname][column_name],
+#                                       color=color[column_name],
+#                                       legend=legend[column_name],
+#                                       line_dash=line_dash[column_name])
+#            else:
+#                figs[figname].scatter('xaxis', 'yaxis',
+#                                      source=sources[figname][column_name],
+#                                      color=color[column_name],
+#                                      legend=legend[column_name],
+#                                      size=6)
+#        figs[figname].legend.location = 'top_left'
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
