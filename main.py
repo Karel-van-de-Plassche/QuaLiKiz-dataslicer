@@ -323,8 +323,8 @@ ds = ds.swap_dims({'Nustar': 'logNustar'})
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
-#plot_freq = True
-plot_freq = False
+plot_freq = True
+#plot_freq = False
 plot_ef = True
 plot_pf = False
 plot_pinch = False
@@ -374,6 +374,7 @@ for name in scan_dims:
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ", height=56,
                                        #prefix=name + " = ", height=50,
+                                       value=(start, start),
                                        prettify=round, start=start,
                                        bar_color=color)
 # Link update event to all sliders
@@ -390,7 +391,8 @@ sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
 
 # Create slider to select x-axis
 xaxis_name = scan_dims[1]
-xaxis_slider = IonRangeSlider(values=scan_dims, height=56, start=scan_dims.index(xaxis_name))
+start = scan_dims.index(xaxis_name)
+xaxis_slider = IonRangeSlider(values=scan_dims, height=56, start=scan_dims.index(xaxis_name), value=(start, start))
 xaxis_slider.on_change('value', swap_x)
 print_slice_button = Button(label="Print slice", button_type="success")
 print_slice_button.on_click(print_slice)
