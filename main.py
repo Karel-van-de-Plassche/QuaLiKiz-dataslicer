@@ -334,8 +334,7 @@ ds = ds.swap_dims({'Nustar': 'logNustar'})
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
-plot_freq = False
-#plot_freq = False
+plot_freq = True
 plot_ef = True
 plot_pf = False
 plot_pinch = False
@@ -548,33 +547,6 @@ for fluxname in flux_vars:
                              legend=linetype
                              )
 
-            #fig = figs[figname]
-            #for line_name, line in lines.items():
-            #    #source = sources[figname][line_name] = ColumnDataSource({'xaxis': [],
-            #    #                                                        'yaxis': []})
-            #    if 'nn' in line_name:
-            #        if plot_nn:
-
-            #            glyph = fig.line('xaxis', 'yaxis',
-            #                               source=flux_source,
-            #                               color=line['color'],
-            #                               legend=line_name,
-            #                               line_dash=line['dash'])
-            #    else:
-            #        embed()
-            #        glyph = fig.scatter(xaxis_name, 'yaxis',
-            #                            source=flux_source,
-            #                            color=line['color'],
-            #                            legend=line_name,
-            #                            size=6)
-            #    line['glyph'] = glyph
-            #figs[figname].legend.location = 'top_left'
-            #figs[figname].legend[0].items.clear()
-            #if not legend_added:
-            #    legends = [(line['legend'], [line['glyph']]) for line in lines.values()]
-            #    legend = Legend(legends=legends, location=(0,0), orientation='horizontal')
-            #    fig.add_layout(legend, 'above')
-            #    legend_added = True
 ############################################################
 # Create legend, style and data sources for growplots      #
 ###########################################################
@@ -599,37 +571,20 @@ for fluxname in grow_vars:
                              line_dash=dashes[name],
                              legend=linetype
                              )
-#for figname in ['growfig']:
-#    if figname in figs:
-#        sources[figname] = OrderedDict()
-#        for ii, column_name in enumerate(linenames):
-#            sources[figname][column_name] = ColumnDataSource({'xaxis': [],
-#                                                              'yaxis': []})
-#            if 'nn' in column_name:
-#                if plot_nn:
-#                    figs[figname].line('xaxis', 'yaxis',
-#                                       source=sources[figname][column_name],
-#                                       color=color[column_name],
-#                                       legend=legend[column_name],
-#                                       line_dash=line_dash[column_name])
-#            else:
-#                figs[figname].scatter('xaxis', 'yaxis',
-#                                      source=sources[figname][column_name],
-#                                      color=color[column_name],
-#                                      legend=legend[column_name],
-#                                      size=6)
-#        figs[figname].legend.location = 'top_left'
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
 ############################################################
 # Find the maximum size of dims to define plot colors
 if plot_freq:
-    max_dim_size = 0
-    for scan_dim in scan_dims:
-        num = ds.dims[scan_dim]
-        if num > max_dim_size:
-            max_dim_size = num
+    max_dim_size = max([ds.dims[dim] for dim in scan_dims])
+    df_freq.reset_index(inplace=True)
+    num_kr = len(df_freq['kthetarhos'].unique())
+    numsols = len(df_freq['numsols'].unique())
+    freq_source = ColumnDataSource(df_freq)
+    from bokeh.models import CDSView, IndexFilter, BooleanFilter, GroupFilter
+    embed()
+    view = CDSView(source=freq_source, filters=[BooleanFilter(bools)])
 
     linenames = []
     for ii in range(max_dim_size):
@@ -640,13 +595,8 @@ if plot_freq:
     for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
         seqcolor = takespread(Plasma256, max_dim_size,
                               repeat=int(ds.dims['numsols']))
-        sources[figname] = OrderedDict()
         for color, column_name in zip(seqcolor, linenames):
-            source = sources[figname][column_name] = ColumnDataSource({'xaxis': [],
-                                                                       'yaxis': [],
-                                                                       'curval': [],
-                                                                       'cursol': []})
-            opts = dict(source=source, color=color, alpha=.5,
+            opts = dict(source=freq_source, color=color, alpha=.5,
                         name=column_name, hover_color=color)
             figs[figname].scatter('xaxis', 'yaxis', **opts)
             figs[figname].line('xaxis', 'yaxis', **opts)
