@@ -580,18 +580,37 @@ if plot_freq:
     max_dim_size = max([ds.dims[dim] for dim in scan_dims])
     df_freq.reset_index(inplace=True)
     num_kr = len(df_freq['kthetarhos'].unique())
+    num_kr_leq = len(df_freq['kthetarhos'].loc[df_freq['kthetarhos'] <= kthetarhos_cutoff].unique())
+    num_kr_great = len(df_freq['kthetarhos'].loc[df_freq['kthetarhos'] > kthetarhos_cutoff].unique())
     numsols = len(df_freq['numsols'].unique())
+    numsol_filter = OrderedDict()
+    for sol in range(numsols):
+        numsol_filter[sol] = set(range(sol, max_dim_size * num_kr * numsols + sol, numsols))
+    kr_filter = OrderedDict()
+    for kr in range(num_kr):
+        kr_filter[kr] = set()
+        for dim in range(max_dim_size):
+            kr_filter[kr] |= set(range(numsols * kr + dim * numsols * num_kr , numsols * (kr + 1) + dim * numsols * num_kr))
+
+    dim_filter = OrderedDict()
+    for dim in range(max_dim_size):
+        dim_filter[dim] = set(range(num_kr * numsols * dim, num_kr * numsols * (dim + 1)))
+
     freq_source = ColumnDataSource(df_freq)
     from bokeh.models import CDSView, IndexFilter, BooleanFilter, GroupFilter
-    embed()
-    view = CDSView(source=freq_source, filters=[BooleanFilter(bools)])
-
-    linenames = []
-    for ii in range(max_dim_size):
-        for jj in range(ds.dims['numsols']):
-            linenames.append('dim' + str(ii) + 'sol' + str(jj))
-
     renderers = []
+    for sol in range(numsols):
+        for dim in range(max_dim_size):
+            idx = dim_filter[dim] & numsol_filter[sol]
+            kr_filters = [kr_filter[kr] & idx for kr in range(num_kr_leq)]
+            idx_leq = sorted(set.union(*kr_filters))
+            kr_filters = [kr_filter[kr] & idx for kr in range(num_kr_leq, num_kr_leq + num_kr_great)]
+            idx_great = sorted(set.union(*kr_filters))
+
+            embed()
+            exit()
+            view = CDSView(source=freq_source, filters=[BooleanFilter(bools)])
+
     for figname in ['gamlow', 'gamhigh', 'omelow', 'omehigh']:
         seqcolor = takespread(Plasma256, max_dim_size,
                               repeat=int(ds.dims['numsols']))
