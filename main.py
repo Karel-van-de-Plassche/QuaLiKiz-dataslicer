@@ -54,12 +54,12 @@ def takespread(sequence, num, repeat=1):
 
 def extract_plotdata(sel_dict):
     start = time.time()
-    slice_ = ds.sel(**sel_dict, method='nearest')
+    slice_ = ds.sel(**sel_dict)
+    slice_.load()
     #slice_sep = ds_sep.sel(**sel_dict)
     #slice_grow = ds_grow.sel(**sel_dict)
     #slice_ = xr.merge([slice_, slice_grow])
     #slice_ = slice_.sel(nions=0)
-    slice_.load()
     df_flux = slice_[fluxlike_vars].reset_coords(drop=True).to_dataframe()
     df_flux.index.name = 'xaxis'
     df_flux.reset_index(inplace=True)
@@ -68,7 +68,7 @@ def extract_plotdata(sel_dict):
         xaxis = df_flux['xaxis']
         nn_xaxis = np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)
 
-        inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name}, index=[0])
+        inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name and name in slice_}, index=[0])
         input = pd.DataFrame({xaxis_name: np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)}).join(inp).fillna(method='ffill')
         df_nn = nn.get_output(input)
         df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
@@ -85,6 +85,9 @@ def extract_plotdata(sel_dict):
     else:
         df_freq = pd.DataFrame()
     #df_freq.index.set_names('xaxis', level='kthetarhos', inplace=True)
+
+    if plot_victor and slice_['gammaE'] != 0:
+        df_flux = pd.DataFrame()
 
     return df_flux, df_freq, df_nn
 
@@ -122,9 +125,11 @@ def updater(attr, old, new):
         return
 
     df_flux, df_grow, df_nn = extract_plotdata(sel_dict)
-    flux_source.data = dict(df_flux)
-    freq_source.data = dict(df_freq)
-    nn_source.data = dict(df_nn)
+    for source, df in zip([flux_source, freq_source, nn_source], [df_flux, df_freq, df_nn]):
+        if len(df) == 0:
+            source.data = {name: [] for name in source.column_names}
+        else:
+            source.data = dict(df)
 
 def get_nn_scan_dims(nn, scan_dims):
     nn_scan_dims = []
@@ -171,6 +176,7 @@ plot_pinch = False
 plot_df = False
 plot_grow = False
 plot_sepflux = True
+plot_victor = True
 norm = '_GB'
 
 sepflux_names = ['ETG', 'ITG', 'TEM']
@@ -210,6 +216,10 @@ else:
 fluxlike_vars = [''.join(var) for var in flux_vars + grow_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
+if plot_victor:
+    ds.coords['gammaE'] = np.linspace(0, 1, 10)
+    scan_dims.append('gammaE')
+
 ############################################################
 # Create sliders                                           #
 ############################################################
@@ -224,6 +234,8 @@ for name in scan_dims:
     start = float(ds[name].isel(**{name: int(ds[name].size/2)}))
     #start = int(ds[name].size/2)
     color = 'green'
+    if name == 'gammaE':
+        start = 0
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ", height=56,
                                        #prefix=name + " = ", height=50,
