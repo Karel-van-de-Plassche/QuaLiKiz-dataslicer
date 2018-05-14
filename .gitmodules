@@ -1,3 +1,3 @@
-[submodule "bokeh_ion_range_slider"]
-	path = bokeh_ion_range_slider
-	url = git@github.com:Karel-van-de-Plassche/bokeh_ion_range_slider
+[submodule "bokeh-ion-rangeslider"]
+	path = bokeh-ion-rangeslider
+	url = git@github.com:Karel-van-de-Plassche/bokeh-ion-rangeslider.git

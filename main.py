@@ -18,7 +18,6 @@ import pprint
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 from IPython import embed
-from bokeh_ion_rangeslider import IonRangeSlider
 from bokeh.plotting import figure, show, reset_output, Figure
 from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox
 from bokeh.models.widgets import Button, Div
@@ -30,6 +29,9 @@ from bokeh.palettes import Plasma256
 #TODO: Add sane checking if loading failed and why
 import sys
 sys.path.append('../QLKNN-develop')
+sys.path.append('./bokeh-ion-rangeslider')
+
+from bokeh_ion_rangeslider import IonRangeSlider
 try:
     ModuleNotFoundError
 except:
@@ -66,7 +68,7 @@ def extract_plotdata(sel_dict):
 
     if plot_nn:
         xaxis = df_flux['xaxis']
-        nn_xaxis = np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)
+        nn_xaxis = np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 200)
 
         inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name and name in slice_}, index=[0])
         input = pd.DataFrame({xaxis_name: np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)}).join(inp).fillna(method='ffill')
