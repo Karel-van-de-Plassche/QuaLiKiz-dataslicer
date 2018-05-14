@@ -40,13 +40,14 @@ plot_nn = False
 try:
     from qlknn.models.ffnn import QuaLiKizNDNN
 except ModuleNotFoundError:
+    print("Could not import QuaLiKizNDNN")
     pass
 else:
     try:
         import mega_nn
         plot_nn = True
     except:
-        print('No mega NN')
+        print('Could not import mega_nn')
 
 def takespread(sequence, num, repeat=1):
     length = float(len(sequence))
@@ -181,7 +182,7 @@ plot_sepflux = True
 plot_victor = True
 norm = '_GB'
 
-sepflux_names = ['ETG', 'ITG', 'TEM']
+sepflux_names = ['ITG', 'TEM']
 #sepflux_names = ['ETG']
 if plot_sepflux:
     flux_suffixes = [''] + [name for name in sepflux_names]
@@ -202,8 +203,7 @@ for pre in ['ef', 'pf']:
         continue
     for suff in flux_suffixes:
         for species in ['i', 'e']:
-            if ((species == 'i' and suff == 'ETG') or
-                (pre == 'pf' and species == 'e')):
+            if ((species == 'i' and suff == 'ETG')):
                 continue
             flux_vars.append((pre, species, suff, norm))
 if plot_freq:
@@ -392,20 +392,22 @@ colors = {'gam_leq': sepcolor[-1]}
 for fluxname in grow_vars:
     pre, species, suff, norm = fluxname
     fig = fluxfigs['grow']
+    varname = pre + suff + norm
     for linetype in dashes.keys():
         if linetype == 'qlk':
-            glyph = fig.scatter('xaxis', pre + suff + norm,
+            glyph = fig.scatter('xaxis', varname,
                                 source=flux_source,
                                 color=colors[pre + suff],
                                 legend=species
                                )
         else:
-            glyph = fig.line('xaxis', linetype + pre + suff + norm,
-                             source=nn_source,
-                             color=colors[pre + suff],
-                             line_dash=dashes[name],
-                             legend=linetype
-                             )
+            if varname in list(nn._target_names):
+                glyph = fig.line('xaxis', linetype + pre + suff + norm,
+                                 source=nn_source,
+                                 color=colors[pre + suff],
+                                 line_dash=dashes[name],
+                                 legend=linetype
+                                 )
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
