@@ -166,6 +166,10 @@ ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x
 ds = ds.merge(ds_grow)
 ds['logNustar'] = np.log10(ds['Nustar'])
 ds = ds.swap_dims({'Nustar': 'logNustar'})
+if 'Zeffx' in ds.dims:
+    ds = ds.rename({'Zeffx': 'Zeff'})
+if 'qx' in ds.dims:
+    ds = ds.rename({'qx': 'q'})
 
 #ds_sep = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.sep.nc.1'))
 #ds_sep = ds_sep.drop([x for x in ds_sep.coords if x not in ds_sep.dims and x not in ['Zi']])
@@ -173,17 +177,25 @@ ds = ds.swap_dims({'Nustar': 'logNustar'})
 
 plot_nn = plot_nn and True
 plot_freq = False
-plot_ef = True
-plot_pf = False
 plot_pinch = False
 plot_df = False
-plot_grow = False
 plot_sepflux = True
 plot_victor = True
+sepflux_names = ['ITG', 'TEM']
+
+style = 'heat'
+#style = 'particle'
+if style == 'heat':
+    plot_ef = True
+    plot_pf = False
+    plot_grow = False
+    sepflux_names.insert(0, 'ETG')
+elif style == 'particle':
+    plot_ef = False
+    plot_pf = True
+    plot_grow = True
 norm = '_GB'
 
-sepflux_names = ['ITG', 'TEM']
-#sepflux_names = ['ETG']
 if plot_sepflux:
     flux_suffixes = [''] + [name for name in sepflux_names]
 else:
