@@ -1,0 +1,88 @@
+{% extends base %}
+{% block preamble %}
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
+<style>
+
+.container-fluid {
+  flex-wrap: nowrap;
+}
+
+.col {
+  flex-wrap: nowrap;
+  flex-basis: auto;
+  flex-shrink: 1;
+}
+
+.square:before {
+  content:'';
+  float:left;
+  padding-top:100%;
+}
+
+.row {
+  flex-wrap: nowrap;
+}
+
+.bigrow {
+  display:flex;
+}
+</style>
+
+{% endblock %}
+{% block contents %}
+  <div class="container-fluid">
+    <div class="bigrow">
+      {% for root in roots %}
+        {% if "fluxlike" in root.tags %}
+          <div class="col square">
+            {{ embed(root) }}
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      {% for root in roots %}
+        {% if root.name == 'gamlow' %}
+          <div class="col square">
+            <div class="row">
+              <div class="col square">
+                {{ embed(roots.gamlow) }}
+              </div>
+              <div class="col square">
+                {{ embed(roots.gamhigh) }}
+              </div>
+            </div> {# row #}
+            <div class="row">
+              <div class="col square">
+                {{ embed(roots.omelow) }}
+              </div>
+              <div class="col square">
+                {{ embed(roots.omehigh) }}
+              </div>
+            </div> {# row #}
+          </div> {# col square #}
+        {% endif %}
+      {% endfor %}
+    </div> {# bigrow #}
+
+
+    <div class="bigrow">
+      <div class="col">
+        {{ embed(roots.slidercol1) }}
+      </div>
+      <div class="col">
+        {{ embed(roots.slidercol2) }}
+      </div>
+    </div> {# bigrow #}
+
+    <div class="row">
+      <div class="col">
+        {{ embed(roots.xaxis_slider) }}
+        {{ embed(roots.print_slice_button) }}
+        {{ embed(roots.print_slice_text) }}
+      </div>
+    </div>
+  </div> {# container-fluid #}
+{% endblock %}

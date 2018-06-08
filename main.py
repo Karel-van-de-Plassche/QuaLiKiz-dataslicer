@@ -251,7 +251,8 @@ for name in scan_dims:
     if name == 'gammaE':
         start = 0
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
-                                       prefix=name + " = ", height=56,
+                                       prefix=name + " = ",
+                                       height=56,
                                        #prefix=name + " = ", height=50,
                                        value=(start, start),
                                        prettify=round,
@@ -263,19 +264,21 @@ for slider in slider_dict.values():
 # Display the sliders in two columns
 height_block = 300
 slidercol1 = widgetbox(list(slider_dict.values())[:len(slider_dict)//2],
-                       height=int(.75*height_block))
+                       height=int(.75*height_block),
+                       name='slidercol1')
 slidercol2 = widgetbox(list(slider_dict.values())[len(slider_dict)//2:],
-                       height=int(.75*height_block))
+                       height=int(.75*height_block),
+                       name='slidercol2')
 sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
 
 # Create slider to select x-axis
 xaxis_name = scan_dims[1]
 start = xaxis_name
-xaxis_slider = IonRangeSlider(values=scan_dims, height=56, value=(start, start), title='', show_value=False)
+xaxis_slider = IonRangeSlider(values=scan_dims, height=56, value=(start, start), title='', show_value=False, name='xaxis_slider')
 xaxis_slider.on_change('value', swap_x)
-print_slice_button = Button(label="Print slice", button_type="success")
+print_slice_button = Button(label="Print slice", button_type="success", name='print_slice_button')
 print_slice_button.on_click(print_slice)
-print_slice_text = Div(text="")
+print_slice_text = Div(text="", name='print_slice_text')
 
 toolbar = column([xaxis_slider, print_slice_button, print_slice_text], sizing_mode='scale_width')
 
@@ -297,6 +300,7 @@ labels = {
     'pf': 'Particle flux',
     'grow': 'Growth rate'
           }
+sizing_mode = 'scale_width'
 for figname in ['ef', 'pf', 'grow']:
     if ((figname == 'ef' and not plot_ef) or
         (figname == 'pf' and not plot_pf) or
@@ -310,7 +314,10 @@ for figname in ['ef', 'pf', 'grow']:
         fluxfigs[figname + suffix]   = Figure(x_axis_label=xaxis_name,
                                           y_axis_label=labels[figname] + ' ' + suffix + ' [' + norm[1:] + ']',
                                           height=2*height_block, width=2*height_block,
-                                          tools=flux_tools, x_range=x_range)
+                                          tools=flux_tools, x_range=x_range, tags=['fluxlike'],
+                                          sizing_mode=sizing_mode
+                                          )
+        curdoc().add_root(fluxfigs[figname + suffix])
 
 for fig in fluxfigs.values():
     hover = HoverTool()
@@ -319,6 +326,7 @@ for fig in fluxfigs.values():
 plotrow_figs = list(fluxfigs.values())
 
 # Define the frequency-like plots (e.g. kthetarhos at the x-axis)
+figs = OrderedDict()
 if plot_freq:
     freq_tools = []
     kthetarhos_cutoff = 1
@@ -326,35 +334,34 @@ if plot_freq:
         np.isclose(ds['kthetarhos'].data, kthetarhos_cutoff)))
     figs['gamlow']  = Figure(x_axis_label=' ',
                              y_axis_label='Growth Rates [GB]',
-                             height=height_block, width=height_block,
+                             #height=height_block, width=height_block,
                              tools=freq_tools, x_range=[0, kthetarhos_cutoff],
-                             toolbar_location=None)
+                             toolbar_location=None, name='gamlow',
+                             sizing_mode=sizing_mode,
+                             )
     figs['gamhigh'] = Figure(x_axis_label=' ',
                              y_axis_label=' ',
-                             height=height_block, width=height_block,
+                             #height=height_block, width=height_block,
                              tools=freq_tools, x_range=[kthetarhos_cutoff,
                                                         float(ds['kthetarhos'].max())],
-                             toolbar_location=None)
+                             toolbar_location=None, name='gamhigh',
+                             sizing_mode=sizing_mode,
+                             )
     figs['omelow']  = Figure(x_axis_label='kthetarhos',
                              y_axis_label='Frequencies [GB]',
-                             height=height_block,   width=height_block,
+                             #height=height_block,   width=height_block,
                              tools=freq_tools, x_range=[0, kthetarhos_cutoff],
-                             toolbar_location=None)
+                             toolbar_location=None, name='omelow',
+                             sizing_mode=sizing_mode,
+                             )
     figs['omehigh'] = Figure(x_axis_label='kthetarhos',
                              y_axis_label=' ',
-                             height=height_block,   width=height_block,
+                             #height=height_block,   width=height_block,
                              tools=freq_tools, x_range=[kthetarhos_cutoff,
                                                         float(ds['kthetarhos'].max())],
-                             toolbar_location=None)
-    gamrow = row(figs['gamlow'], figs['gamhigh'],
-                 height=height_block, width=height_block, sizing_mode='scale_width')
-    omerow = row(figs['omelow'], figs['omehigh'],
-                 height=height_block, width=height_block, sizing_mode='scale_width')
-    freqgrid = column(gamrow, omerow, height=2*height_block, sizing_mode='scale_width')
-    plotrow_figs.append(freqgrid)
-
-plotrow = row(plotrow_figs,
-              sizing_mode='scale_width', height=2*height_block)
+                             toolbar_location=None, name='omehigh',
+                             sizing_mode=sizing_mode,
+                             )
 
 ############################################################
 # Create legend, style and data sources for fluxplots      #
@@ -482,9 +489,14 @@ if plot_freq:
         #                                                        ('sol', '@cursol')]
         #                                                      )))
 
-layout = column(plotrow, sliderrow, toolbar, sizing_mode='scale_width')
+from itertools import chain
 if __name__ == '__main__':
     embed()
-    #show(layout)
 else:
-    curdoc().add_root(layout)
+    for fig in chain(fluxfigs.values(), figs.values()):
+        curdoc().add_root(fig)
+    curdoc().add_root(slidercol1)
+    curdoc().add_root(slidercol2)
+    curdoc().add_root(xaxis_slider)
+    curdoc().add_root(print_slice_button)
+    curdoc().add_root(print_slice_text)
