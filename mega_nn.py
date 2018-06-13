@@ -9,6 +9,7 @@ from qlknn.NNDB.model import Network, select_from_candidate_query, get_pure_from
 from qlknn.models.ffnn import QuaLiKizNDNN, QuaLiKizComboNN
 from qlknn.models.clipping import LeadingFluxNN
 from qlknn.models.victor_rule import VictorNN
+from qlknn.misc.analyse_names import is_pure, is_flux, is_transport, split_parts, extract_part_names
 
 
 def combo_func(*args):
@@ -51,10 +52,24 @@ elif nn_source == 'RAPTOR_gen3_nets':
     networks = OrderedDict()
     for path in os.listdir(nn_source):
         nn = QuaLiKizNDNN.from_json(os.path.join(nn_source, path + '/nn.json'))
-        networks[tuple(nn._target_names)] = nn
-    gam = networks.pop(('gam_leq_GB',))
+        if len(nn._target_names) > 1:
+            raise
+        else:
+            networks[nn._target_names[0]] = nn
+    # Match all div networks with their leading fluxes
+    for target_name in list(networks.keys()):
+        if is_transport(target_name) and not is_pure(target_name):
+            target, op, leading = split_parts(target_name)
+            if op != '_div_':
+                raise
+            nn = QuaLiKizComboNN(pd.Series(target),
+                                 [networks.pop(target_name), networks[leading]],
+                                 lambda x, y: x * y)
+            networks[target] = nn
+
+    gam = networks.pop('gam_leq_GB')
     nets = list(networks.values())
-    combo_target_names = [key[0] for key in networks.keys()]
+    combo_target_names = list(networks.keys())
 
 combo_nn = QuaLiKizComboNN(pd.Series(combo_target_names), nets, combo_func)
 vic_nn = VictorNN(combo_nn, gam)
