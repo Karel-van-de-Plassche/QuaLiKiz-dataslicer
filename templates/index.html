@@ -28,6 +28,7 @@
 
 .bigrow {
   display:flex;
+  flex-shrink: 1;
 }
 </style>
 
@@ -37,7 +38,7 @@
     <div class="bigrow">
       {% for root in roots %}
         {% if "fluxlike" in root.tags %}
-          <div class="col square">
+          <div style="padding: 0pt" class="col square">
             {{ embed(root) }}
           </div>
         {% endif %}
@@ -47,18 +48,18 @@
         {% if root.name == 'gamlow' %}
           <div class="col square">
             <div class="row">
-              <div class="col square">
+              <div style="padding: 0pt" class="col square">
                 {{ embed(roots.gamlow) }}
               </div>
-              <div class="col square">
+              <div style="padding: 0pt" class="col square">
                 {{ embed(roots.gamhigh) }}
               </div>
             </div> {# row #}
             <div class="row">
-              <div class="col square">
+              <div style="padding: 0pt" class="col square">
                 {{ embed(roots.omelow) }}
               </div>
-              <div class="col square">
+              <div style="padding: 0pt" class="col square">
                 {{ embed(roots.omehigh) }}
               </div>
             </div> {# row #}
@@ -77,7 +78,7 @@
       </div>
     </div> {# bigrow #}
 
-    <div class="row">
+    <div class="row" >
       <div class="col">
         {{ embed(roots.xaxis_slider) }}
         {{ embed(roots.print_slice_button) }}

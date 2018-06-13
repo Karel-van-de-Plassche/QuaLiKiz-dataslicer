@@ -176,7 +176,7 @@ if 'qx' in ds.dims:
 #ds = xr.open_dataset('4D.nc3')
 
 plot_nn = plot_nn and True
-plot_freq = False
+plot_freq = True
 plot_pinch = False
 plot_df = False
 plot_sepflux = True
@@ -265,11 +265,17 @@ for slider in slider_dict.values():
 height_block = 300
 slidercol1 = widgetbox(list(slider_dict.values())[:len(slider_dict)//2],
                        height=int(.75*height_block),
-                       name='slidercol1')
+                       name='slidercol1',
+                       sizing_mode='scale_both'
+                       )
 slidercol2 = widgetbox(list(slider_dict.values())[len(slider_dict)//2:],
                        height=int(.75*height_block),
-                       name='slidercol2')
-sliderrow = row(slidercol1, slidercol2, sizing_mode='scale_width')
+                       name='slidercol2',
+                       sizing_mode='scale_both'
+                       )
+sliderrow = row(slidercol1, slidercol2,
+                sizing_mode='scale_both'
+                )
 
 # Create slider to select x-axis
 xaxis_name = scan_dims[1]
@@ -300,7 +306,7 @@ labels = {
     'pf': 'Particle flux',
     'grow': 'Growth rate'
           }
-sizing_mode = 'scale_width'
+sizing_mode = 'scale_both'
 for figname in ['ef', 'pf', 'grow']:
     if ((figname == 'ef' and not plot_ef) or
         (figname == 'pf' and not plot_pf) or
