@@ -184,16 +184,49 @@ plot_victor = True
 sepflux_names = ['ITG', 'TEM']
 
 style = 'heat'
-#style = 'particle'
+style = 'particle'
+style = 'diffusivity'
+style = 'thermodiffusion'
+style = 'convection'
 if style == 'heat':
     plot_ef = True
     plot_pf = False
     plot_grow = False
+    plot_pinch = False
     sepflux_names.insert(0, 'ETG')
+    plot_df = False
+    plot_vt = False
+    plot_vc = False
 elif style == 'particle':
     plot_ef = False
     plot_pf = True
     plot_grow = True
+    plot_df = False
+    plot_vt = False
+    plot_vc = False
+elif style == 'diffusivity':
+    plot_ef = False
+    plot_pf = False
+    plot_grow = False
+    plot_df = True
+    plot_vt = False
+    plot_vc = False
+elif style == 'thermodiffusion':
+    plot_ef = False
+    plot_pf = False
+    plot_grow = False
+    plot_df = False
+    plot_vt = True
+    plot_vc = False
+elif style == 'convection':
+    plot_ef = False
+    plot_pf = False
+    plot_grow = False
+    plot_df = False
+    plot_vt = False
+    plot_vc = True
+else:
+    raise Exception('Style {!s} not defined'.format(style))
 norm = '_GB'
 
 if plot_sepflux:
@@ -209,9 +242,14 @@ else:
 
 scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
 flux_vars = []
-for pre in ['ef', 'pf']:
-    if ((pre == 'ef' and not plot_ef) or
-        (pre == 'pf' and not plot_pf)):
+for pre in ['ef', 'pf', 'df', 'vt', 'vc']:
+    if (
+        (pre == 'ef' and not plot_ef) or
+        (pre == 'pf' and not plot_pf) or
+        (pre == 'df' and not plot_df) or
+        (pre == 'vt' and not plot_vt) or
+        (pre == 'vc' and not plot_vc)
+       ):
         continue
     for suff in flux_suffixes:
         for species in ['i', 'e']:
@@ -299,24 +337,19 @@ df_flux, df_freq, df_nn  = extract_plotdata(sel_dict)
 flux_source = ColumnDataSource(df_flux)
 freq_source = ColumnDataSource(df_freq)
 nn_source = ColumnDataSource(df_nn)
-fluxfigs = OrderedDict()
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
 labels = {
-    'ef': 'Energy Flux',
+    'ef': 'Energy flux',
     'pf': 'Particle flux',
-    'grow': 'Growth rate'
+    'grow': 'Growth rate',
+    'df': 'Particle diffusivity',
+    'vt': 'Particle thermodiffusion',
+    'vc': 'Particle convection'
           }
 sizing_mode = 'scale_both'
-for figname in ['ef', 'pf', 'grow']:
-    if ((figname == 'ef' and not plot_ef) or
-        (figname == 'pf' and not plot_pf) or
-        (figname == 'grow' and not plot_grow)):
-            continue
+fluxfigs = OrderedDict()
+for figname in set([flux[0] for flux in flux_vars]):
     for suffix in flux_suffixes:
-        if figname == 'pf' and suffix == 'ETG':
-            continue
-        if figname == 'grow' and suffix != '':
-            continue
         fluxfigs[figname + suffix]   = Figure(x_axis_label=xaxis_name,
                                           y_axis_label=labels[figname] + ' ' + suffix + ' [' + norm[1:] + ']',
                                           height=2*height_block, width=2*height_block,
