@@ -16,7 +16,7 @@ def combo_func(*args):
     return np.hstack(args)
 
 nn_source = 'NNDB'
-#nn_source = 'RAPTOR_gen3_nets'
+nn_source = 'RAPTOR_gen3_nets'
 if nn_source == 'NNDB':
     nN_mn_out = 7
 
