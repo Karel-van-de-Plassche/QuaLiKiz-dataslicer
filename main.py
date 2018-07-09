@@ -149,6 +149,23 @@ def print_slice():
     text = "<br />".join(text.split("\n"))
     print_slice_text.text = text
 
+def unique_ordered(seq, idfun=None):
+    """ Remove duplicate elements and preserve ordering from sequence """
+    if idfun is None:
+        def idfun(x): return x
+    seen = {}
+    result = []
+    for item in seq:
+        marker = idfun(item)
+        # in old Python versions:
+        # if seen.has_key(marker)
+        # but in new ones:
+        if marker in seen: continue
+        seen[marker] = 1
+        result.append(item)
+    return result
+
+
 
 ############################################################
 # Load dataset                                             #
@@ -181,6 +198,7 @@ plot_pinch = False
 plot_df = False
 plot_sepflux = True
 plot_victor = True
+plot_full = True
 sepflux_names = ['ITG', 'TEM']
 
 style = 'heat'
@@ -188,6 +206,7 @@ style = 'particle'
 style = 'diffusivity'
 style = 'thermodiffusion'
 style = 'convection'
+style = 'TEM'
 if style == 'heat':
     plot_ef = True
     plot_pf = False
@@ -225,14 +244,33 @@ elif style == 'convection':
     plot_df = False
     plot_vt = False
     plot_vc = True
+elif style in ['ETG', 'ITG', 'TEM']:
+    plot_ef = True
+    plot_freq = False
+    plot_grow = False
+    plot_full = False
+    if style != 'ETG':
+        plot_pf = True
+        plot_df = True
+        plot_vt = True
+        plot_vc = True
+    else:
+        plot_pf = False
+        plot_df = False
+        plot_vt = False
+        plot_vc = False
+    sepflux_names = [style]
 else:
     raise Exception('Style {!s} not defined'.format(style))
 norm = '_GB'
 
-if plot_sepflux:
-    flux_suffixes = [''] + [name for name in sepflux_names]
-else:
+if plot_full:
     flux_suffixes = ['']
+else:
+    flux_suffixes = []
+
+if plot_sepflux:
+    flux_suffixes += [name for name in sepflux_names]
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
@@ -348,7 +386,7 @@ labels = {
           }
 sizing_mode = 'scale_both'
 fluxfigs = OrderedDict()
-for figname in set([flux[0] for flux in flux_vars]):
+for figname in unique_ordered([flux[0] for flux in flux_vars]):
     for suffix in flux_suffixes:
         fluxfigs[figname + suffix]   = Figure(x_axis_label=xaxis_name,
                                           y_axis_label=labels[figname] + ' ' + suffix + ' [' + norm[1:] + ']',
