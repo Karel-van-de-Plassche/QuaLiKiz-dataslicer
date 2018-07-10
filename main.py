@@ -74,6 +74,10 @@ def extract_plotdata(sel_dict):
         inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name and name in slice_}, index=[0])
         input = pd.DataFrame({xaxis_name: np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)}).join(inp).fillna(method='ffill')
         df_nn = nn.get_output(input)
+        if gam_leq_nn is not None:
+            df_gam_leq = gam_leq_nn.get_output(input)
+            gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
+            df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
         df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
         df_nn.columns = ['nn_' + name for name in df_nn.columns]
         df_nn.index = (input[xaxis_name])
@@ -220,6 +224,7 @@ elif style == 'particle':
     plot_ef = False
     plot_pf = True
     plot_grow = True
+    plot_freq = False
     plot_df = False
     plot_vt = False
     plot_vc = False
@@ -300,15 +305,25 @@ else:
     freq_vars = []
 
 if plot_grow:
-    grow_vars = [('gam_leq', '', '', norm)]
-else:
-    grow_vars = []
-fluxlike_vars = [''.join(var) for var in flux_vars + grow_vars]
+    flux_vars.append(('gam', '_leq', '', norm))
+fluxlike_vars = [''.join(var) for var in flux_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
 if plot_victor:
     ds.coords['gammaE'] = np.linspace(0, 1, 10)
     scan_dims.append('gammaE')
+
+# Look if we have a gam network somewhere deeper
+gam_leq_nn = None
+if 'gam_leq_GB' not in nn._target_names:
+    if hasattr(nn, '_internal_network'):
+        if 'gam_leq_GB' in nn._internal_network._target_names.values:
+            gam_leq_nn = nn._internal_network
+        else:
+            if hasattr(nn._internal_network, '_internal_network'):
+                if 'gam_leq_GB' in nn._internal_network._internal_network._target_names.values:
+                    gam_leq_nn = nn._internal_network._internal_network
+
 
 ############################################################
 # Create sliders                                           #
@@ -379,26 +394,27 @@ nn_source = ColumnDataSource(df_nn)
 labels = {
     'ef': 'Energy flux',
     'pf': 'Particle flux',
-    'grow': 'Growth rate',
+    'gam': 'Growth rate',
     'df': 'Particle diffusivity',
     'vt': 'Particle thermodiffusion',
     'vc': 'Particle convection'
           }
 sizing_mode = 'scale_both'
 fluxfigs = OrderedDict()
-for figname in unique_ordered([flux[0] for flux in flux_vars]):
-    for suffix in flux_suffixes:
-        fluxfigs[figname + suffix]   = Figure(x_axis_label=xaxis_name,
-                                          y_axis_label=labels[figname] + ' ' + suffix + ' [' + norm[1:] + ']',
+for (pre, species, suffix, norm) in flux_vars:
+    figname = pre + suffix
+    if figname not in fluxfigs:
+        fluxfigs[figname]   = Figure(x_axis_label=xaxis_name,
+                                          y_axis_label=labels[pre] + ' ' + suffix + ' [' + norm[1:] + ']',
                                           height=2*height_block, width=2*height_block,
                                           tools=flux_tools, x_range=x_range, tags=['fluxlike'],
                                           sizing_mode=sizing_mode
                                           )
-        curdoc().add_root(fluxfigs[figname + suffix])
+        curdoc().add_root(fluxfigs[figname])
 
 for fig in fluxfigs.values():
     hover = HoverTool()
-    hover.tooltips = [('x,y', '(@xaxis, @yaxis)')]
+    hover.tooltips = [('x,y', '($x, $y)')]
     fig.add_tools(hover)
 plotrow_figs = list(fluxfigs.values())
 
@@ -458,52 +474,29 @@ dashes = {'qlk': 'scatter'}
 for ii, name in enumerate(nn_names):
     dashes[name] = style_dash[ii]
 
-# link data sources to figures
-for fluxname in flux_vars:
-    pre, species, suff, norm = fluxname
-    fig = fluxfigs[pre+suff]
-    for linetype in dashes.keys():
-        species_id = species[0]
-        varname = pre + species_id + suff + norm
-        if linetype == 'qlk':
-            glyph = fig.scatter('xaxis', varname,
-                                source=flux_source,
-                                color=colors[species_id],
-                                legend=species
-                               )
-        else:
-            if varname in list(nn._target_names):
-                glyph = fig.line('xaxis', linetype + varname,
-                                 source=nn_source,
-                                 color=colors[species_id],
-                                 line_dash=dashes[name],
-                                 legend=linetype
-                                )
+colors['_leq'] = sepcolor[-1]
 
-############################################################
-# Create legend, style and data sources for growplots      #
-###########################################################
-colors = {'gam_leq': sepcolor[-1]}
 # link data sources to figures
-for fluxname in grow_vars:
-    pre, species, suff, norm = fluxname
-    fig = fluxfigs['grow']
-    varname = pre + suff + norm
-    for linetype in dashes.keys():
-        if linetype == 'qlk':
-            glyph = fig.scatter('xaxis', varname,
+for pre, species, suff, norm in flux_vars:
+    fluxname = ''.join([pre, species, suff, norm])
+    figname = pre + suff
+    fig = fluxfigs[figname]
+    for nn_name in dashes.keys():
+        if nn_name == 'qlk':
+            glyph = fig.scatter('xaxis', fluxname,
                                 source=flux_source,
-                                color=colors[pre + suff],
+                                color=colors[species],
                                 legend=species
                                )
         else:
-            if varname in list(nn._target_names):
-                glyph = fig.line('xaxis', linetype + pre + suff + norm,
+            if (fluxname in list(nn._target_names) or
+               (pre == 'gam' and gam_leq_nn is not None)):
+                glyph = fig.line('xaxis', nn_name + fluxname,
                                  source=nn_source,
-                                 color=colors[pre + suff],
-                                 line_dash=dashes[name],
-                                 legend=linetype
-                                 )
+                                 color=colors[species],
+                                 line_dash=dashes[nn_name],
+                                 legend=nn_name
+                                )
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
