@@ -29,46 +29,99 @@
 .bigrow {
   display:flex;
   flex-shrink: 1;
+  max-height: 40vh;
 }
 </style>
 
 {% endblock %}
 {% block contents %}
+
+<ul class="nav nav-tabs" id="myTab" role="tablist">
+  <li class="nav-item">
+    <a class="nav-link active" id="ITG-tab" data-toggle="tab" href="#ITG" role="tab" aria-controls="ITG" aria-selected="true">ITG</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="TEM-tab" data-toggle="tab" href="#TEM" role="tab" aria-controls="TEM" aria-selected="false">TEM</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="ETG-tab" data-toggle="tab" href="#ETG" role="tab" aria-controls="ETG" aria-selected="false">ETG</a>
+  </li>
+</ul>
+<div class="tab-content" id="myTabContent">
+
+  <div class="tab-pane fade show" id="ETG" role="tabpanel" aria-labelledby="ETG-tab">
+    <div class="container-fluid">
+      <div class="bigrow">
+        {% for root in roots %}
+          {% if "ETG" in root.tags %}
+            <div style="padding: 0pt" class="col square">
+              {{ embed(root) }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div> {# bigrow #}
+    </div> {# container-fluid #}
+  </div> {# tab-pane #}
+
+  <div class="tab-pane fade show active" id="ITG" role="tabpanel" aria-labelledby="ITG-tab">
+    <div class="container-fluid">
+      <div class="bigrow">
+        {% for root in roots %}
+          {% if "ITG" in root.tags %}
+            <div style="padding: 0pt" class="col square">
+              {{ embed(root) }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div> {# bigrow #}
+    </div> {# container-fluid #}
+  </div> {# tab-pane #}
+
+  <div class="tab-pane fade show" id="TEM" role="tabpanel" aria-labelledby="TEM-tab">
+    <div class="container-fluid">
+      <div class="bigrow">
+        {% for root in roots %}
+          {% if "TEM" in root.tags %}
+            <div style="padding: 0pt" class="col square">
+              {{ embed(root) }}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div> {# bigrow #}
+    </div> {# container-fluid #}
+  </div> {# tab-pane #}
+
+        {% for root in roots %}
+          {% if root.name == 'gamlow' %}
+    <div class="container-fluid">
+      <div class="bigrow">
+            <div class="col square">
+              <div class="row">
+                <div style="padding: 0pt" class="col square">
+                  {{ embed(roots.gamlow) }}
+                </div>
+                <div style="padding: 0pt" class="col square">
+                  {{ embed(roots.gamhigh) }}
+                </div>
+              </div> {# row #}
+              <div class="row">
+                <div style="padding: 0pt" class="col square">
+                  {{ embed(roots.omelow) }}
+                </div>
+                <div style="padding: 0pt" class="col square">
+                  {{ embed(roots.omehigh) }}
+                </div>
+              </div> {# row #}
+            </div> {# col square #}
+      </div> {# bigrow #}
+    </div> {# container-fluid #}
+          {% endif %}
+        {% endfor %}
+
+</div> {# tab-content #}
+
+
   <div class="container-fluid">
-    <div class="bigrow">
-      {% for root in roots %}
-        {% if "fluxlike" in root.tags %}
-          <div style="padding: 0pt" class="col square">
-            {{ embed(root) }}
-          </div>
-        {% endif %}
-      {% endfor %}
-
-      {% for root in roots %}
-        {% if root.name == 'gamlow' %}
-          <div class="col square">
-            <div class="row">
-              <div style="padding: 0pt" class="col square">
-                {{ embed(roots.gamlow) }}
-              </div>
-              <div style="padding: 0pt" class="col square">
-                {{ embed(roots.gamhigh) }}
-              </div>
-            </div> {# row #}
-            <div class="row">
-              <div style="padding: 0pt" class="col square">
-                {{ embed(roots.omelow) }}
-              </div>
-              <div style="padding: 0pt" class="col square">
-                {{ embed(roots.omehigh) }}
-              </div>
-            </div> {# row #}
-          </div> {# col square #}
-        {% endif %}
-      {% endfor %}
-    </div> {# bigrow #}
-
-
     <div class="bigrow">
       <div class="col">
         {{ embed(roots.slidercol1) }}

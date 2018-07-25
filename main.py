@@ -211,6 +211,7 @@ style = 'diffusivity'
 style = 'thermodiffusion'
 style = 'convection'
 style = 'TEM'
+style = 'all'
 if style == 'heat':
     plot_ef = True
     plot_pf = False
@@ -265,6 +266,16 @@ elif style in ['ETG', 'ITG', 'TEM']:
         plot_vt = False
         plot_vc = False
     sepflux_names = [style]
+elif style == 'all':
+    plot_ef = True
+    plot_freq = False
+    plot_grow = False
+    plot_full = False
+    plot_pf = True
+    plot_df = True
+    plot_vt = True
+    plot_vc = True
+    sepflux_names.insert(0, 'ETG')
 else:
     raise Exception('Style {!s} not defined'.format(style))
 norm = '_GB'
@@ -296,7 +307,7 @@ for pre in ['ef', 'pf', 'df', 'vt', 'vc']:
         continue
     for suff in flux_suffixes:
         for species in ['i', 'e']:
-            if ((species == 'i' and suff == 'ETG')):
+            if ((suff == 'ETG' and not (pre == 'ef' and species == 'e'))):
                 continue
             flux_vars.append((pre, species, suff, norm))
 if plot_freq:
@@ -407,7 +418,7 @@ for (pre, species, suffix, norm) in flux_vars:
         fluxfigs[figname]   = Figure(x_axis_label=xaxis_name,
                                           y_axis_label=labels[pre] + ' ' + suffix + ' [' + norm[1:] + ']',
                                           height=2*height_block, width=2*height_block,
-                                          tools=flux_tools, x_range=x_range, tags=['fluxlike'],
+                                          tools=flux_tools, x_range=x_range, tags=['fluxlike', pre, species, suffix, norm],
                                           sizing_mode=sizing_mode
                                           )
         curdoc().add_root(fluxfigs[figname])
