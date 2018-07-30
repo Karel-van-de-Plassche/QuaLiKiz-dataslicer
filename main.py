@@ -62,7 +62,8 @@ def extract_plotdata(sel_dict):
     #slice_sep = ds_sep.sel(**sel_dict)
     #slice_grow = ds_grow.sel(**sel_dict)
     #slice_ = xr.merge([slice_, slice_grow])
-    #slice_ = slice_.sel(nions=0)
+    if 'nions' in slice_.dims:
+        slice_ = slice_.sel(nions=0)
     df_flux = slice_[fluxlike_vars].reset_coords(drop=True).to_dataframe()
     df_flux.index.name = 'xaxis'
     df_flux.reset_index(inplace=True)
@@ -73,6 +74,12 @@ def extract_plotdata(sel_dict):
 
         inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name and name in slice_}, index=[0])
         input = pd.DataFrame({xaxis_name: np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)}).join(inp).fillna(method='ffill')
+        for name in nn._feature_names:
+            if name not in input:
+                if name in ds.attrs:
+                    input[name] = ds.attrs[name]
+                elif name == 'logNustar' and 'Nustar' in ds.attrs:
+                    input[name] = np.log10(ds.attrs['Nustar'])
         df_nn = nn.get_output(input)
         if gam_leq_nn is not None:
             df_gam_leq = gam_leq_nn.get_output(input)
@@ -93,7 +100,7 @@ def extract_plotdata(sel_dict):
         df_freq = pd.DataFrame()
     #df_freq.index.set_names('xaxis', level='kthetarhos', inplace=True)
 
-    if plot_victor and slice_['gammaE'] != 0:
+    if fake_gammaE and slice_['gammaE'] != 0:
         df_flux = pd.DataFrame()
 
     return df_flux, df_freq, df_nn
@@ -179,14 +186,20 @@ if socket.gethostname().startswith('rs'):
     root_dir = '/Rijnh/Shares/Departments/Fusiefysica/IMT/karel'
 else:
     root_dir = '../qlk_data'
-ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
-#ds = xr.open_dataset(os.path.join(root, 'Zeffcombo.nc.1'))
+ds_to_plot = '9D'
+#ds_to_plot = 'rot_one'
+if ds_to_plot == '9D':
+    ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
+    #ds = xr.open_dataset(os.path.join(root, 'Zeffcombo.nc.1'))
+    ds_grow = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.grow.nc'))
+    ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
+    #ds = ds.merge(ds_grow)
+elif ds_to_plot == 'rot_one':
+    ds = xr.open_dataset(os.path.join(root_dir, 'rot_one.nc'))
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
-ds_grow = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.grow.nc'))
-ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
-ds = ds.merge(ds_grow)
-ds['logNustar'] = np.log10(ds['Nustar'])
-ds = ds.swap_dims({'Nustar': 'logNustar'})
+if 'Nustar' in ds:
+    ds['logNustar'] = np.log10(ds['Nustar'])
+    ds = ds.swap_dims({'Nustar': 'logNustar'})
 if 'Zeffx' in ds.dims:
     ds = ds.rename({'Zeffx': 'Zeff'})
 if 'qx' in ds.dims:
@@ -294,7 +307,8 @@ if plot_nn:
 else:
     nn = None
 
-scan_dims = [name for name in ds.dims if name not in ['nions', 'numsols', 'kthetarhos']]
+nondims = ['nions', 'numsols', 'kthetarhos', 'ecoefs', 'numicoefs', 'ntheta']
+scan_dims = [name for name in ds.dims if name not in nondims]
 flux_vars = []
 for pre in ['ef', 'pf', 'df', 'vt', 'vc']:
     if (
@@ -321,12 +335,16 @@ fluxlike_vars = [''.join(var) for var in flux_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
 if plot_victor:
-    ds.coords['gammaE'] = np.linspace(0, 1, 10)
-    scan_dims.append('gammaE')
+    if 'gammaE' not in ds.coords:
+        fake_gammaE = True
+        ds.coords['gammaE'] = np.linspace(0, 1, 10)
+        scan_dims.append('gammaE')
+    else:
+        fake_gammaE = False
 
 # Look if we have a gam network somewhere deeper
 gam_leq_nn = None
-if 'gam_leq_GB' not in nn._target_names:
+if nn is not None and 'gam_leq_GB' not in nn._target_names:
     if hasattr(nn, '_internal_network'):
         if 'gam_leq_GB' in nn._internal_network._target_names.values:
             gam_leq_nn = nn._internal_network
