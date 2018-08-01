@@ -57,19 +57,54 @@ def takespread(sequence, num, repeat=1):
 
 def extract_plotdata(sel_dict):
     start = time.time()
-    slice_ = ds.sel(**sel_dict)
+    slice_ = ds.sel(**sel_dict, method='nearest', tolerance=1e-4)
     slice_.load()
     #slice_sep = ds_sep.sel(**sel_dict)
     #slice_grow = ds_grow.sel(**sel_dict)
     #slice_ = xr.merge([slice_, slice_grow])
     if 'nions' in slice_.dims:
         slice_ = slice_.sel(nions=0)
-    df_flux = slice_[fluxlike_vars].reset_coords(drop=True).to_dataframe()
+    if xaxis_name == 'gammaE':
+        slice_flux = slice_[fluxlike_vars].reset_coords(drop=True)
+        columns = [k for k in slice_flux.variables if k not in slice_flux.dims]
+        data = [slice_flux._variables[k].set_dims([]).values.reshape(-1) for k in columns]
+        df_flux = pd.DataFrame(OrderedDict(zip(columns, data)), index=[ds.attrs[xaxis_name]])
+    elif np.isclose(sel_dict['gammaE'], 0) or 'gammaE' in ds[fluxlike_vars[0]].dims:
+        df_flux = slice_[fluxlike_vars].reset_coords(drop=True).to_dataframe()
+    else:
+        df_flux = pd.DataFrame()
     df_flux.index.name = 'xaxis'
     df_flux.reset_index(inplace=True)
 
+    try:
+        slice_rot = ds_rot.sel(**{k: v for k, v in sel_dict.items() if k in ds_rot.dims},
+                               method='nearest', tolerance=1e-4)
+        for k, v in sel_dict.items():
+            if k not in ds_rot.dims:
+                if not np.isclose(v, ds_rot.attrs[k]):
+                    raise KeyError
+    except KeyError:
+        df_rot = pd.DataFrame()
+    else:
+        if 'nions' in slice_rot.dims:
+            slice_rot = slice_rot.sel(nions=0)
+        slice_rot = slice_rot[fluxlike_vars].reset_coords(drop=True)
+        try:
+            df_rot = slice_rot.to_dataframe()
+        except ValueError: #0D slice
+            columns = [k for k in slice_rot.variables if k not in slice_rot.dims]
+            data = [slice_rot._variables[k].set_dims([]).values.reshape(-1) for k in columns]
+            df_rot = pd.DataFrame(OrderedDict(zip(columns, data)), index=[ds_rot.attrs[xaxis_name]])
+
+        no_df_cols = [col for col in df_rot.columns if 'df' not in col]
+        df_rot[no_df_cols] = df_rot[no_df_cols] * 3
+
+        df_rot.index.name = 'xaxis'
+        df_rot.reset_index(inplace=True)
+
     if plot_nn:
-        xaxis = df_flux['xaxis']
+        #xaxis = df_flux['xaxis']
+        xaxis = pd.Series(ds[xaxis_name].values, name=xaxis_name)
         nn_xaxis = np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 200)
 
         inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name and name in slice_}, index=[0])
@@ -103,7 +138,7 @@ def extract_plotdata(sel_dict):
     if fake_gammaE and slice_['gammaE'] != 0:
         df_flux = pd.DataFrame()
 
-    return df_flux, df_freq, df_nn
+    return df_flux, df_freq, df_nn, df_rot
 
 def swap_x(attr, old, new):
     global xaxis_name, flux_source, freq_source, nn_source
@@ -138,8 +173,8 @@ def updater(attr, old, new):
     except TypeError:
         return
 
-    df_flux, df_grow, df_nn = extract_plotdata(sel_dict)
-    for source, df in zip([flux_source, freq_source, nn_source], [df_flux, df_freq, df_nn]):
+    df_flux, df_grow, df_nn, df_rot = extract_plotdata(sel_dict)
+    for source, df in zip([flux_source, freq_source, nn_source, rot_source], [df_flux, df_freq, df_nn, df_rot]):
         if len(df) == 0:
             source.data = {name: [] for name in source.column_names}
         else:
@@ -190,7 +225,8 @@ ds_to_plot = '9D'
 #ds_to_plot = 'rot_one'
 if ds_to_plot == '9D':
     ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
-    #ds = xr.open_dataset(os.path.join(root, 'Zeffcombo.nc.1'))
+    ds_rot = xr.open_dataset(os.path.join(root_dir, 'rot_two.nc'))
+    ds_rot.attrs['logNustar'] = np.log10(ds_rot.attrs['Nustar'])
     ds_grow = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.grow.nc'))
     ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
     #ds = ds.merge(ds_grow)
@@ -335,12 +371,19 @@ fluxlike_vars = [''.join(var) for var in flux_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
 if plot_victor:
-    if 'gammaE' not in ds.coords:
-        fake_gammaE = True
-        ds.coords['gammaE'] = np.linspace(0, 1, 10)
-        scan_dims.append('gammaE')
-    else:
+    if 'gammaE' in ds.coords:
         fake_gammaE = False
+        if 'gammaE' in ds_rot.coords:
+            raise Exception('Two datasets with gammaE!')
+    else:
+        if 'gammaE' in ds_rot.coords:
+            fake_gammaE = False
+            ds.coords['gammaE'] = ds_rot.coords['gammaE']
+            scan_dims.append('gammaE')
+        else:
+            fake_gammaE = True
+            ds.coords['gammaE'] = np.linspace(0, 1, 10)
+            scan_dims.append('gammaE')
 
 # Look if we have a gam network somewhere deeper
 gam_leq_nn = None
@@ -369,7 +412,7 @@ for name in scan_dims:
     #start = int(ds[name].size/2)
     color = 'green'
     if name == 'gammaE':
-        start = 0
+        start = float(ds[name].isel(gammaE=np.abs(ds[name]).argmin()))
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ",
                                        height=56,
@@ -415,8 +458,9 @@ flux_tools = ['box_zoom,pan,zoom_in,zoom_out,reset,save']
 
 x_range = [float(np.min(ds[xaxis_name])), float(np.max(ds[xaxis_name]))]
 sel_dict = read_sliders()
-df_flux, df_freq, df_nn  = extract_plotdata(sel_dict)
+df_flux, df_freq, df_nn, df_rot  = extract_plotdata(sel_dict)
 flux_source = ColumnDataSource(df_flux)
+rot_source = ColumnDataSource({name: [] for name in df_flux})
 freq_source = ColumnDataSource(df_freq)
 nn_source = ColumnDataSource(df_nn)
 # Define the flux-like plots (e.g. xaxis_name on the x-axis)
@@ -488,15 +532,18 @@ if plot_freq:
 ############################################################
 # Create legend, style and data sources for fluxplots      #
 ############################################################
-sepcolor = sepcolor[9]
+from bokeh.palettes import Category20
+sepcolor = Category20[20]
 particle_names = ['e'] + ['i']
 if nn:
     nn_names = ['nn_']
 else:
     nn_names = []
 colors = {}
+rot_colors = {}
 for ii, species in enumerate(particle_names):
-    colors[species] = sepcolor[ii]
+    rot_colors[species] = sepcolor[2*ii+1]
+    colors[species] = sepcolor[2*ii]
 
 style_dash = ['solid', 'dashed', 'dotted', 'dashdot', 'dotdash']
 dashes = {'qlk': 'scatter'}
@@ -515,6 +562,11 @@ for pre, species, suff, norm in flux_vars:
             glyph = fig.scatter('xaxis', fluxname,
                                 source=flux_source,
                                 color=colors[species],
+                                legend=species
+                               )
+            glyph = fig.scatter('xaxis', fluxname,
+                                source=rot_source,
+                                color=rot_colors[species],
                                 legend=species
                                )
         else:
