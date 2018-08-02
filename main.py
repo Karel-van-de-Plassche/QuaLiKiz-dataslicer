@@ -29,6 +29,7 @@ from bokeh.palettes import Plasma256
 #TODO: Add sane checking if loading failed and why
 import sys
 sys.path.append('../QLKNN-develop')
+sys.path.append('../QuaLiKiz-pythontools')
 sys.path.append('./bokeh-ion-rangeslider')
 
 from bokeh_ion_rangeslider import IonRangeSlider
