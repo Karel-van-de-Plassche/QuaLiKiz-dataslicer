@@ -39,6 +39,7 @@ except:
 plot_nn = False
 try:
     from qlknn.models.ffnn import QuaLiKizNDNN
+    from qlknn.models.victor_rule import gammaE_QLK_to_gammaE_GB, gammaE_GB_to_gammaE_QLK
 except ModuleNotFoundError:
     print("Could not import QuaLiKizNDNN")
     pass
@@ -48,6 +49,7 @@ else:
         plot_nn = True
     except:
         print('Could not import mega_nn')
+from qualikiz_tools.misc.conversion import calc_nustar_from_parts, calc_te_from_nustar
 
 def takespread(sequence, num, repeat=1):
     length = float(len(sequence))
@@ -115,6 +117,23 @@ def extract_plotdata(sel_dict):
                     input[name] = ds.attrs[name]
                 elif name == 'logNustar' and 'Nustar' in ds.attrs:
                     input[name] = np.log10(ds.attrs['Nustar'])
+
+        if plot_victor:
+            vars = pd.DataFrame()
+            for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
+                if name in input:
+                    vars[name] = input[name]
+                elif name in ds.attrs:
+                    vars[name] = ds.attrs[name]
+            if 'logNustar' in vars:
+                vars['Nustar'] = 10**vars.pop('logNustar')
+            Te = calc_te_from_nustar(*[vars[name] for name in ['Zeff', 'ne', 'Nustar', 'q', 'Ro', 'Rmin', 'x']])
+            if 'gammaE' in sel_dict:
+                gammaE_QLK = sel_dict['gammaE']
+            elif xaxis_name == 'gammaE':
+                gammaE_QLK = input['gammaE']
+            input['gammaE'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
+
         df_nn = nn.get_output(input)
         if gam_leq_nn is not None:
             df_gam_leq = gam_leq_nn.get_output(input)
@@ -122,6 +141,8 @@ def extract_plotdata(sel_dict):
             df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
         df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
         df_nn.columns = ['nn_' + name for name in df_nn.columns]
+        if plot_victor and xaxis_name == 'gammaE':
+            input['gammaE'] = gammaE_GB_to_gammaE_QLK(input['gammaE'], Te, ds.attrs['Ai'][0])
         df_nn.index = (input[xaxis_name])
         df_nn.index.name = 'xaxis'
         df_nn.reset_index(inplace=True)
@@ -229,7 +250,8 @@ if ds_to_plot == '9D':
     ds_rot.attrs['logNustar'] = np.log10(ds_rot.attrs['Nustar'])
     ds_grow = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.grow.nc'))
     ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
-    #ds = ds.merge(ds_grow)
+    ds = ds.merge(ds_grow)
+    ds.attrs['ne'] = ds.attrs.pop('Nex')
 elif ds_to_plot == 'rot_one':
     ds = xr.open_dataset(os.path.join(root_dir, 'rot_one.nc'))
 ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
