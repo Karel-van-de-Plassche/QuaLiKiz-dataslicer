@@ -171,8 +171,12 @@ def swap_x(attr, old, new):
     for source in [flux_source, freq_source, nn_source]:
         source.data = {name: [] for name in source.column_names}
     for fig in fluxfigs.values():
-        fig.x_range.start = float(min(ds[xaxis_name]))
-        fig.x_range.end = float(max(ds[xaxis_name]))
+        if xaxis_name == 'gammaE':
+            fig.x_range.start = float(max(ds[xaxis_name]))
+            fig.x_range.end = float(min(ds[xaxis_name]))
+        else:
+            fig.x_range.start = float(min(ds[xaxis_name]))
+            fig.x_range.end = float(max(ds[xaxis_name]))
         fig.xaxis.axis_label = xaxis_name
     updater(None, None, None)
 
