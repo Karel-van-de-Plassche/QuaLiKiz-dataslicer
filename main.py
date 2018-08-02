@@ -131,8 +131,8 @@ def extract_plotdata(sel_dict):
             if 'gammaE' in sel_dict:
                 gammaE_QLK = sel_dict['gammaE']
             elif xaxis_name == 'gammaE':
-                gammaE_QLK = input['gammaE']
-            input['gammaE'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
+                gammaE_QLK = input.pop('gammaE')
+            input['gammaE_GB'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
 
         df_nn = nn.get_output(input)
         if gam_leq_nn is not None:
@@ -142,7 +142,7 @@ def extract_plotdata(sel_dict):
         df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
         df_nn.columns = ['nn_' + name for name in df_nn.columns]
         if plot_victor and xaxis_name == 'gammaE':
-            input['gammaE'] = gammaE_GB_to_gammaE_QLK(input['gammaE'], Te, ds.attrs['Ai'][0])
+            input['gammaE'] = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
         df_nn.index = (input[xaxis_name])
         df_nn.index.name = 'xaxis'
         df_nn.reset_index(inplace=True)
