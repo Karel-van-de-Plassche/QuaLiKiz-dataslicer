@@ -50,7 +50,7 @@ else:
         plot_nn = True
     except:
         print('Could not import mega_nn')
-from qualikiz_tools.misc.conversion import calc_nustar_from_parts, calc_te_from_nustar
+from qualikiz_tools.misc.conversion import calc_nustar_from_parts, calc_te_from_nustar, calc_puretor_gradient, calc_epsilon_from_parts, calc_puretor_gradient
 
 def takespread(sequence, num, repeat=1):
     length = float(len(sequence))
@@ -67,12 +67,12 @@ def extract_plotdata(sel_dict):
     #slice_ = xr.merge([slice_, slice_grow])
     if 'nions' in slice_.dims:
         slice_ = slice_.sel(nions=0)
-    if xaxis_name == 'gammaE':
+    if xaxis_name == rotvar:
         slice_flux = slice_[fluxlike_vars].reset_coords(drop=True)
         columns = [k for k in slice_flux.variables if k not in slice_flux.dims]
         data = [slice_flux._variables[k].set_dims([]).values.reshape(-1) for k in columns]
         df_flux = pd.DataFrame(OrderedDict(zip(columns, data)), index=[ds.attrs[xaxis_name]])
-    elif np.isclose(sel_dict['gammaE'], 0) or 'gammaE' in ds[fluxlike_vars[0]].dims:
+    elif np.isclose(sel_dict[rotvar], 0) or rotvar in ds[fluxlike_vars[0]].dims:
         df_flux = slice_[fluxlike_vars].reset_coords(drop=True).to_dataframe()
     else:
         df_flux = pd.DataFrame()
@@ -86,7 +86,7 @@ def extract_plotdata(sel_dict):
             if k not in ds_rot.dims:
                 if not np.isclose(v, ds_rot.attrs[k]):
                     raise KeyError
-    except KeyError:
+    except KeyError as ee:
         df_rot = pd.DataFrame()
     else:
         if 'nions' in slice_rot.dims:
@@ -133,6 +133,19 @@ def extract_plotdata(sel_dict):
                 gammaE_QLK = sel_dict['gammaE']
             elif xaxis_name == 'gammaE':
                 gammaE_QLK = input.pop('gammaE')
+            elif 'Machtor' in sel_dict or xaxis_name == 'Machtor':
+                x = input['x']
+                q = input['q']
+                epsilon = calc_epsilon_from_parts(x,
+                                                  ds.attrs['Rmin'],
+                                                  ds.attrs['Ro'])
+                # Assume relation from JET DB
+                if 'Machtor' in sel_dict:
+                    Machtor = sel_dict['Machtor']
+                elif xaxis_name == 'Machtor':
+                    Machtor = input.pop('Machtor').values
+                Autor = Machtor / 0.1401
+                [__, __, gammaE_QLK] = calc_puretor_gradient(epsilon, q, Autor=Autor)
             input['gammaE_GB'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
 
         df_nn = nn.get_output(input)
@@ -142,8 +155,15 @@ def extract_plotdata(sel_dict):
             df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
         df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
         df_nn.columns = ['nn_' + name for name in df_nn.columns]
-        if plot_victor and xaxis_name == 'gammaE':
-            input['gammaE'] = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
+        if plot_victor and xaxis_name == rotvar:
+            gammaE = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
+            if rotvar == 'gammaE':
+                input['gammaE'] = gammaE
+            elif rotvar == 'Machtor':
+                Autor = [__, Autor, __] = calc_puretor_gradient(epsilon, q, gammaE=gammaE)
+                # Assume relation from JET DB
+                Machtor = Autor * 0.1401
+                input['Machtor'] = Machtor
         df_nn.index = (input[xaxis_name])
         df_nn.index.name = 'xaxis'
         df_nn.reset_index(inplace=True)
@@ -157,7 +177,7 @@ def extract_plotdata(sel_dict):
         df_freq = pd.DataFrame()
     #df_freq.index.set_names('xaxis', level='kthetarhos', inplace=True)
 
-    if fake_gammaE and slice_['gammaE'] != 0:
+    if fake_rotvar and slice_['gammaE'] != 0:
         df_flux = pd.DataFrame()
 
     return df_flux, df_freq, df_nn, df_rot
@@ -251,7 +271,7 @@ ds_to_plot = '9D'
 #ds_to_plot = 'rot_one'
 if ds_to_plot == '9D':
     ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
-    ds_rot = xr.open_dataset(os.path.join(root_dir, 'rot_two.nc'))
+    ds_rot = xr.open_dataset(os.path.join(root_dir, 'rot_three.nc.1'))
     ds_rot.attrs['logNustar'] = np.log10(ds_rot.attrs['Nustar'])
     ds_grow = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.grow.nc'))
     ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
@@ -278,6 +298,7 @@ plot_pinch = False
 plot_df = False
 plot_sepflux = True
 plot_victor = True
+rotvar = 'Machtor'
 plot_full = True
 sepflux_names = ['ITG', 'TEM']
 
@@ -398,19 +419,19 @@ fluxlike_vars = [''.join(var) for var in flux_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
 if plot_victor:
-    if 'gammaE' in ds.coords:
-        fake_gammaE = False
-        if 'gammaE' in ds_rot.coords:
-            raise Exception('Two datasets with gammaE!')
+    if rotvar in ds.coords:
+        fake_rotvar = False
+        if rotvar in ds_rot.coords:
+            raise Exception('Two datasets with {!s}'.format(rotvar))
     else:
-        if 'gammaE' in ds_rot.coords:
-            fake_gammaE = False
-            ds.coords['gammaE'] = ds_rot.coords['gammaE']
-            scan_dims.append('gammaE')
+        if rotvar in ds_rot.coords:
+            fake_rotvar = False
+            ds.coords[rotvar] = ds_rot.coords[rotvar]
+            scan_dims.append(rotvar)
         else:
-            fake_gammaE = True
-            ds.coords['gammaE'] = np.linspace(0, 1, 10)
-            scan_dims.append('gammaE')
+            fake_rotvar = True
+            ds.coords[rotvar] = np.linspace(0, 1, 10)
+            scan_dims.append(rotvar)
 
 # Look if we have a gam network somewhere deeper
 gam_leq_nn = None
@@ -438,8 +459,8 @@ for name in scan_dims:
     start = float(ds[name].isel(**{name: int(ds[name].size/2)}))
     #start = int(ds[name].size/2)
     color = 'green'
-    if name == 'gammaE':
-        start = float(ds[name].isel(gammaE=np.abs(ds[name]).argmin()))
+    if name == rotvar:
+        start = float(ds[name].isel({rotvar: np.abs(ds[name]).argmin()}))
     slider_dict[name] = IonRangeSlider(values=np.unique(ds[name].data).tolist(),
                                        prefix=name + " = ",
                                        height=56,
