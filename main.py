@@ -269,6 +269,7 @@ else:
     root_dir = '../qlk_data'
 ds_to_plot = '9D'
 #ds_to_plot = 'rot_one'
+constrain_to_rot = False
 if ds_to_plot == '9D':
     ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
     ds_rot = xr.open_dataset(os.path.join(root_dir, 'rot_three.nc.1'))
@@ -277,12 +278,22 @@ if ds_to_plot == '9D':
     ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
     ds = ds.merge(ds_grow)
     ds.attrs['ne'] = ds.attrs.pop('Nex')
+    if constrain_to_rot:
+        dummy_var = 'efe_GB'
+        rot_dims = ds_rot[dummy_var].dims
+        ds = ds.sel({dim: ds_rot[dim].values for dim in rot_dims if dim != 'Machtor'},
+                    tolerance=1e-4, method='nearest')
+        ds = ds.sel({'Zeff': ds_rot.attrs['Zeff'], 'Nustar': ds_rot.attrs['Nustar']},
+                    tolerance=1e-4, method='nearest')
+
 elif ds_to_plot == 'rot_one':
     ds = xr.open_dataset(os.path.join(root_dir, 'rot_one.nc'))
-ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
-if 'Nustar' in ds:
+#ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
+if 'Nustar' in ds.dims:
     ds['logNustar'] = np.log10(ds['Nustar'])
     ds = ds.swap_dims({'Nustar': 'logNustar'})
+elif 'Nustar' in ds.coords:
+    ds.coords['logNustar'] = np.log10(ds['Nustar'])
 if 'Zeffx' in ds.dims:
     ds = ds.rename({'Zeffx': 'Zeff'})
 if 'qx' in ds.dims:
