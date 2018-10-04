@@ -40,7 +40,7 @@ except:
 plot_nn = False
 try:
     from qlknn.models.ffnn import QuaLiKizNDNN
-    from qlknn.models.victor_rule import gammaE_QLK_to_gammaE_GB, gammaE_GB_to_gammaE_QLK
+    from qlknn.models.victor_rule import gammaE_QLK_to_gammaE_GB, gammaE_GB_to_gammaE_QLK, VictorNN
 except ModuleNotFoundError:
     print("Could not import QuaLiKizNDNN")
     pass
@@ -119,7 +119,7 @@ def extract_plotdata(sel_dict):
                 elif name == 'logNustar' and 'Nustar' in ds.attrs:
                     input[name] = np.log10(ds.attrs['Nustar'])
 
-        if plot_victor:
+        if plot_victor and isinstance(nn._internal_network, VictorNN):
             vars = pd.DataFrame()
             for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
                 if name in input:
@@ -155,7 +155,7 @@ def extract_plotdata(sel_dict):
             df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
         df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
         df_nn.columns = ['nn_' + name for name in df_nn.columns]
-        if plot_victor and xaxis_name == rotvar:
+        if plot_victor and xaxis_name == rotvar and isinstance(nn._internal_network, VictorNN):
             gammaE = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
             if rotvar == 'gammaE':
                 input['gammaE'] = gammaE
