@@ -72,7 +72,7 @@ def extract_plotdata(sel_dict):
         columns = [k for k in slice_flux.variables if k not in slice_flux.dims]
         data = [slice_flux._variables[k].set_dims([]).values.reshape(-1) for k in columns]
         df_flux = pd.DataFrame(OrderedDict(zip(columns, data)), index=[ds.attrs[xaxis_name]])
-    elif np.isclose(sel_dict[rotvar], 0) or rotvar in ds[fluxlike_vars[0]].dims:
+    elif rotvar not in sel_dict or np.isclose(sel_dict[rotvar], 0) or rotvar in ds[fluxlike_vars[0]].dims:
         df_flux = slice_[fluxlike_vars].reset_coords(drop=True).to_dataframe()
     else:
         df_flux = pd.DataFrame()
@@ -429,6 +429,7 @@ if plot_grow:
 fluxlike_vars = [''.join(var) for var in flux_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
+fake_rotvar = False
 if plot_victor:
     if rotvar in ds.coords:
         fake_rotvar = False
