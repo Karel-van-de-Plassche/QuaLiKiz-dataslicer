@@ -1,5 +1,6 @@
 import os
 import sys
+import copy
 
 import pandas as pd
 import numpy as np
@@ -98,6 +99,7 @@ elif nn_source in ['RAPTOR_gen3_nets']:
             raise
         else:
             networks[nn._target_names[0]] = nn
+    networks['efeETG_GB_div_efeETG_GB_rot0'] = QuaLiKizNDNN(nn_dict_fakey)
 elif nn_source in ['QLKNN-networks']:
     from collections import OrderedDict
     networks = OrderedDict()
@@ -110,6 +112,11 @@ elif nn_source in ['QLKNN-networks']:
                 networks[nn._target_names[0]] = nn
     if rotdiv:
         networks['efeETG_GB_div_efeETG_GB_rot0'] = QuaLiKizNDNN(nn_dict_fakey)
+        # Use the efi rotdiv for efe
+        networks['efeITG_GB_div_efeITG_GB_rot0'] = copy.deepcopy(networks['efiITG_GB_div_efiITG_GB_rot0'])
+        networks['efeITG_GB_div_efeITG_GB_rot0']._target_names = pd.Series(['efeITG_GB_div_efeITG_GB_rot0'])
+        networks['efeTEM_GB_div_efeTEM_GB_rot0'] = copy.deepcopy(networks['efiTEM_GB_div_efiTEM_GB_rot0'])
+        networks['efeTEM_GB_div_efeTEM_GB_rot0']._target_names = pd.Series(['efeTEM_GB_div_efeTEM_GB_rot0'])
     else:
         networks = {name: net for name, net in networks.items() if 'rot' not in name}
 if rotdiv and nn_source is not 'QLKNN-networks':
@@ -146,8 +153,6 @@ if rotdiv and nn_source is not 'QLKNN-networks':
     rot_TEM_list.append(get_pure_from_hyperpar('vciTEM_GB_div_vciTEM_GB_rot0', nN_mn_out, cost_l2_scale=5e-4))
     rot_Network_list = rot_ITG_list + rot_TEM_list
     rot_networks = {net.target_names[0]: net.to_QuaLiKizNDNN() for net in rot_Network_list}
-    rot_networks['efeETG_GB_div_efeETG_GB_rot0'] = QuaLiKizNDNN(nn_dict_fakey)
-    QuaLiKizNDNN(nn_dict_fakey)
     networks.update(rot_networks)
 # Match all div networks with their leading fluxes
 from functools import reduce
