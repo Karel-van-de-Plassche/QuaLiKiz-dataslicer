@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from IPython import embed
 
+sys.path.append('../QuaLiKiz-pythontools')
 from qlknn.NNDB.model import Network, select_from_candidate_query, get_pure_from_cost_l2_scale, get_from_cost_l2_scale_array, get_pure_from_hyperpar
 from qlknn.models.ffnn import QuaLiKizNDNN, QuaLiKizComboNN
 from qlknn.models.rotdiv import RotDivNN
@@ -32,6 +33,7 @@ def combo_func(*args):
 
 nn_source = 'NNDB'
 nn_source = 'QLKNN-networks'
+nn_source = 'RAPTOR_gen3_nets'
 rotdiv = True
 if nn_source == 'NNDB':
     nN_mn_out = 7
