@@ -159,6 +159,9 @@ def extract_plotdata(sel_dict):
                 gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
                 df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
             df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
+            not_there = [var for var in fluxlike_vars if var not in df_nn.columns]
+            for var in not_there:
+                df_nn.loc[:, var] = np.NaN
             df_nn.columns = [nn_name + '_' + name for name in df_nn.columns]
             if plot_victor and xaxis_name == rotvar and isinstance(nn._internal_network, VictorNN):
                 gammaE = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
@@ -408,10 +411,10 @@ if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
     nn0 = mega_nn.nn
     nns = OrderedDict([('gen_3', nn0)])
-    #nn1 = QuaLiKizFortranNN('/home/karel/QLKNN-fortran/lib')
-    #nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
+    nn1 = QuaLiKizFortranNN('/home/karel/working/QLKNN-fortran/lib')
+    nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
 else:
-    nns = []
+    nns = {}
 
 nondims = ['nions', 'numsols', 'kthetarhos', 'ecoefs', 'numicoefs', 'ntheta']
 scan_dims = [name for name in ds.dims if name not in nondims]
@@ -467,7 +470,6 @@ for nn_name, nn in nns.items():
                 if hasattr(nn._internal_network, '_internal_network'):
                     if 'gam_leq_GB' in nn._internal_network._internal_network._target_names.values:
                         gam_leq_nns[nn_name] = nn._internal_network._internal_network
-del nn
 
 
 ############################################################
