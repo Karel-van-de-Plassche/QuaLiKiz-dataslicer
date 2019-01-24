@@ -106,69 +106,74 @@ def extract_plotdata(sel_dict):
         df_rot.reset_index(inplace=True)
 
     if plot_nn:
+        df_nns = []
+        for nn_name, nn in nns.items():
         #xaxis = df_flux['xaxis']
-        xaxis = pd.Series(ds[xaxis_name].values, name=xaxis_name)
-        nn_xaxis = np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 200)
+            xaxis = pd.Series(ds[xaxis_name].values, name=xaxis_name)
+            nn_xaxis = np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 200)
 
-        inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name and name in slice_}, index=[0])
-        input = pd.DataFrame({xaxis_name: np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)}).join(inp).fillna(method='ffill')
-        for name in nn._feature_names:
-            if name not in input:
-                if name in ds.attrs:
-                    input[name] = ds.attrs[name]
-                elif name == 'logNustar' and 'Nustar' in ds.attrs:
-                    input[name] = np.log10(ds.attrs['Nustar'])
+            inp = pd.DataFrame({name: float(slice_[name]) for name in nn._feature_names if name != xaxis_name and name in slice_}, index=[0])
+            input = pd.DataFrame({xaxis_name: np.linspace(xaxis.iloc[0], xaxis.iloc[-1], 60)}).join(inp).fillna(method='ffill')
+            for name in nn._feature_names:
+                if name not in input:
+                    if name in ds.attrs:
+                        input[name] = ds.attrs[name]
+                    elif name == 'logNustar' and 'Nustar' in ds.attrs:
+                        input[name] = np.log10(ds.attrs['Nustar'])
 
-        if plot_victor and isinstance(nn._internal_network, VictorNN):
-            vars = pd.DataFrame()
-            for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
-                if name in input:
-                    vars[name] = input[name]
-                elif name in ds.attrs:
-                    vars[name] = ds.attrs[name]
-            if 'logNustar' in vars:
-                vars['Nustar'] = 10**vars.pop('logNustar')
-            Te = calc_te_from_nustar(*[vars[name] for name in ['Zeff', 'ne', 'Nustar', 'q', 'Ro', 'Rmin', 'x']])
-            if 'gammaE' in sel_dict:
-                gammaE_QLK = sel_dict['gammaE']
-            elif xaxis_name == 'gammaE':
-                gammaE_QLK = input.pop('gammaE')
-            elif 'Machtor' in sel_dict or xaxis_name == 'Machtor':
-                x = input['x']
-                q = input['q']
-                epsilon = calc_epsilon_from_parts(x,
-                                                  ds.attrs['Rmin'],
-                                                  ds.attrs['Ro'])
-                # Assume relation from JET DB
-                if 'Machtor' in sel_dict:
-                    Machtor = sel_dict['Machtor']
-                elif xaxis_name == 'Machtor':
-                    Machtor = input.pop('Machtor').values
-                Autor = Machtor / 0.1401
-                [__, __, gammaE_QLK] = calc_puretor_gradient(epsilon, q, Autor=Autor)
-            input['gammaE_GB'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
+            if plot_victor and isinstance(nn._internal_network, VictorNN):
+                vars = pd.DataFrame()
+                for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
+                    if name in input:
+                        vars[name] = input[name]
+                    elif name in ds.attrs:
+                        vars[name] = ds.attrs[name]
+                if 'logNustar' in vars:
+                    vars['Nustar'] = 10**vars.pop('logNustar')
+                Te = calc_te_from_nustar(*[vars[name] for name in ['Zeff', 'ne', 'Nustar', 'q', 'Ro', 'Rmin', 'x']])
+                if 'gammaE' in sel_dict:
+                    gammaE_QLK = sel_dict['gammaE']
+                elif xaxis_name == 'gammaE':
+                    gammaE_QLK = input.pop('gammaE')
+                elif 'Machtor' in sel_dict or xaxis_name == 'Machtor':
+                    x = input['x']
+                    q = input['q']
+                    epsilon = calc_epsilon_from_parts(x,
+                                                      ds.attrs['Rmin'],
+                                                      ds.attrs['Ro'])
+                    # Assume relation from JET DB
+                    if 'Machtor' in sel_dict:
+                        Machtor = sel_dict['Machtor']
+                    elif xaxis_name == 'Machtor':
+                        Machtor = input.pop('Machtor').values
+                    Autor = Machtor / 0.1401
+                    [__, __, gammaE_QLK] = calc_puretor_gradient(epsilon, q, Autor=Autor)
+                input['gammaE_GB'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
 
-        df_nn = nn.get_output(input)
-        if gam_leq_nn is not None:
-            df_gam_leq = gam_leq_nn.get_output(input)
-            gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
-            df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
-        df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
-        df_nn.columns = ['nn_' + name for name in df_nn.columns]
-        if plot_victor and xaxis_name == rotvar and isinstance(nn._internal_network, VictorNN):
-            gammaE = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
-            if rotvar == 'gammaE':
-                input['gammaE'] = gammaE
-            elif rotvar == 'Machtor':
-                Autor = [__, Autor, __] = calc_puretor_gradient(epsilon, q, gammaE=gammaE)
-                # Assume relation from JET DB
-                Machtor = Autor * 0.1401
-                input['Machtor'] = Machtor
-        df_nn.index = (input[xaxis_name])
-        df_nn.index.name = 'xaxis'
-        df_nn.reset_index(inplace=True)
+            df_nn = nn.get_output(input)
+            if gam_leq_nns[nn_name] is not None:
+                df_gam_leq = gam_leq_nns[nn_name].get_output(input)
+                gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
+                df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
+            df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
+            df_nn.columns = [nn_name + '_' + name for name in df_nn.columns]
+            if plot_victor and xaxis_name == rotvar and isinstance(nn._internal_network, VictorNN):
+                gammaE = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
+                if rotvar == 'gammaE':
+                    input['gammaE'] = gammaE
+                elif rotvar == 'Machtor':
+                    Autor = [__, Autor, __] = calc_puretor_gradient(epsilon, q, gammaE=gammaE)
+                    # Assume relation from JET DB
+                    Machtor = Autor * 0.1401
+                    input['Machtor'] = Machtor
+            #df_nn.index = (input[xaxis_name])
+            #df_nn.index.name = 'xaxis'
+            #df_nn.reset_index(inplace=True)
+            df_nns.append(df_nn)
+        df_nns = pd.concat(df_nns, axis=1)
+        df_nns['xaxis'] = input[xaxis_name]
     else:
-        df_nn = pd.DataFrame()
+        df_nns = pd.DataFrame()
 
     if plot_freq:
         df_freq = slice_[freq_vars].reset_coords(drop=True).to_dataframe()
@@ -180,7 +185,7 @@ def extract_plotdata(sel_dict):
     if fake_rotvar and slice_['gammaE'] != 0:
         df_flux = pd.DataFrame()
 
-    return df_flux, df_freq, df_nn, df_rot
+    return df_flux, df_freq, df_nns, df_rot
 
 def swap_x(attr, old, new):
     global xaxis_name, flux_source, freq_source, nn_source
@@ -224,7 +229,7 @@ def updater(attr, old, new):
         if len(df) == 0:
             source.data = {name: [] for name in source.column_names}
         else:
-            source.data = dict(df)
+            source.data = df.to_dict('list')
 
 def get_nn_scan_dims(nn, scan_dims):
     nn_scan_dims = []
@@ -398,9 +403,10 @@ if plot_sepflux:
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
-    nn = mega_nn.nn
+    nn0 = mega_nn.nn
+    nns = OrderedDict([('gen_3', nn0)])
 else:
-    nn = None
+    nns = []
 
 nondims = ['nions', 'numsols', 'kthetarhos', 'ecoefs', 'numicoefs', 'ntheta']
 scan_dims = [name for name in ds.dims if name not in nondims]
@@ -446,15 +452,17 @@ if plot_victor:
             scan_dims.append(rotvar)
 
 # Look if we have a gam network somewhere deeper
-gam_leq_nn = None
-if nn is not None and 'gam_leq_GB' not in nn._target_names:
-    if hasattr(nn, '_internal_network'):
-        if 'gam_leq_GB' in nn._internal_network._target_names.values:
-            gam_leq_nn = nn._internal_network
-        else:
-            if hasattr(nn._internal_network, '_internal_network'):
-                if 'gam_leq_GB' in nn._internal_network._internal_network._target_names.values:
-                    gam_leq_nn = nn._internal_network._internal_network
+gam_leq_nns = {nn_name: None for nn_name in nns.keys()}
+for nn_name, nn in nns.items():
+    if nn is not None and 'gam_leq_GB' not in nn._target_names:
+        if hasattr(nn, '_internal_network'):
+            if 'gam_leq_GB' in nn._internal_network._target_names.values:
+                gam_leq_nns[nn_name] = nn._internal_network
+            else:
+                if hasattr(nn._internal_network, '_internal_network'):
+                    if 'gam_leq_GB' in nn._internal_network._internal_network._target_names.values:
+                        gam_leq_nns[nn_name] = nn._internal_network._internal_network
+del nn
 
 
 ############################################################
@@ -595,8 +603,8 @@ if plot_freq:
 from bokeh.palettes import Category20
 sepcolor = Category20[20]
 particle_names = ['e'] + ['i']
-if nn:
-    nn_names = ['nn_']
+if plot_nn:
+    nn_names = nns.keys()
 else:
     nn_names = []
 colors = {}
@@ -630,14 +638,16 @@ for pre, species, suff, norm in flux_vars:
                                 legend=species
                                )
         else:
-            if (fluxname in list(nn._target_names) or
-               (pre == 'gam' and gam_leq_nn is not None)):
-                glyph = fig.line('xaxis', nn_name + fluxname,
-                                 source=nn_source,
-                                 color=colors[species],
-                                 line_dash=dashes[nn_name],
-                                 legend=nn_name
-                                )
+            for nn in nns.values():
+                if (fluxname in list(nn._target_names) or
+                   (pre == 'gam' and not all([nn is None for nn in gam_leq_nns.values()]))):
+                    glyph = fig.line('xaxis', nn_name + '_' + fluxname,
+                                     source=nn_source,
+                                     color=colors[species],
+                                     line_dash=dashes[nn_name],
+                                     legend=nn_name
+                                    )
+            del nn
 
 ############################################################
 # Create legend, style and data sources for freqplots      #
