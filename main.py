@@ -124,7 +124,7 @@ def extract_plotdata(sel_dict):
                     elif name == 'logNustar' and 'Nustar' in ds.attrs:
                         input[name] = np.log10(ds.attrs['Nustar'])
 
-            if plot_victor and hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN):
+            if isinstance(nn, QuaLiKizFortranNN) or (plot_victor and hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)):
                 vars = pd.DataFrame()
                 for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
                     if name in input:
@@ -151,7 +151,10 @@ def extract_plotdata(sel_dict):
                         Machtor = input.pop('Machtor').values
                     Autor = Machtor / 0.1401
                     [__, __, gammaE_QLK] = calc_puretor_gradient(epsilon, q, Autor=Autor)
-                input['gammaE_GB'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
+                if isinstance(nn, QuaLiKizFortranNN):
+                    input['gammaE_QLK'] = gammaE_QLK
+                else:
+                    input['gammaE_GB'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
 
             df_nn = nn.get_output(input)
             if gam_leq_nns[nn_name] is not None:
