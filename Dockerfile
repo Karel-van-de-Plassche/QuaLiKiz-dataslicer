@@ -16,8 +16,13 @@ RUN pip install ipython
 RUN env NO_SQLITE=1 pip install peewee psycopg2
 
 # Download and install QLKNN-develop source
-RUN cd / && git clone https://github.com/karel-van-de-plassche/QLKNN-develop.git
+RUN cd / && git clone https://gitlab.com/karel-van-de-plassche/QLKNN-develop.git
 RUN pip install -e /QLKNN-develop
+
+RUN apk add --no-cache \
+    gfortran
+RUN pip install f90nml f90wrap
+RUN cd / && git clone https://gitlab.com/QuaLiKiz-group/QLKNN-fortran.git
 
 RUN python3 -c "import tornado; print('tornado version=' + tornado.version)"
 RUN bokeh info

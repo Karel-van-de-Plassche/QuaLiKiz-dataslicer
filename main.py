@@ -43,7 +43,10 @@ try:
     from qlknn.models.victor_rule import gammaE_QLK_to_gammaE_GB, gammaE_GB_to_gammaE_QLK, VictorNN
 except ModuleNotFoundError:
     print("Could not import QuaLiKizNDNN")
-    pass
+try:
+    from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
+except ModuleNotFoundError:
+    print("Could not import QuaLiKizFortranNN")
 else:
     try:
         import mega_nn
@@ -121,7 +124,7 @@ def extract_plotdata(sel_dict):
                     elif name == 'logNustar' and 'Nustar' in ds.attrs:
                         input[name] = np.log10(ds.attrs['Nustar'])
 
-            if plot_victor and isinstance(nn._internal_network, VictorNN):
+            if plot_victor and hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN):
                 vars = pd.DataFrame()
                 for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
                     if name in input:
@@ -405,6 +408,8 @@ if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
     nn0 = mega_nn.nn
     nns = OrderedDict([('gen_3', nn0)])
+    #nn1 = QuaLiKizFortranNN('/home/karel/QLKNN-fortran/lib')
+    #nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
 else:
     nns = []
 
