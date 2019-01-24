@@ -12,12 +12,26 @@ from qlknn.models.clipping import LeadingFluxNN
 from qlknn.models.victor_rule import VictorNN
 from qlknn.misc.analyse_names import is_pure, is_flux, is_transport, split_parts, extract_part_names
 
+nn_dict_fakey = {
+    'feature_names': ['Machtor'],
+    'target_names': ['efeETG_GB_div_efeETG_GB_rot0'],
+    'feature_min': {'Machtor': -np.inf},
+    'feature_max': {'Machtor': +np.inf},
+    'target_min': {'efeETG_GB_div_efeETG_GB_rot0': -np.inf},
+    'target_max': {'efeETG_GB_div_efeETG_GB_rot0': +np.inf},
+    'prescale_bias': {'Machtor': 0,
+                      'efeETG_GB_div_efeETG_GB_rot0': 1},
+    'prescale_factor': {'Machtor': 0,
+                        'efeETG_GB_div_efeETG_GB_rot0': -1},
+    'hidden_activation': [],
+    'output_activation': 'none'
+}
 
 def combo_func(*args):
     return np.hstack(args)
 
 nn_source = 'NNDB'
-nn_source = 'RAPTOR_gen3_nets'
+nn_source = 'QLKNN-networks'
 rotdiv = True
 if nn_source == 'NNDB':
     nN_mn_out = 7
@@ -82,7 +96,21 @@ elif nn_source in ['RAPTOR_gen3_nets']:
             raise
         else:
             networks[nn._target_names[0]] = nn
-if rotdiv:
+elif nn_source in ['QLKNN-networks']:
+    from collections import OrderedDict
+    networks = OrderedDict()
+    for path in os.listdir(nn_source):
+        if path.endswith('.json'):
+            nn = QuaLiKizNDNN.from_json(os.path.join(nn_source, path))
+            if len(nn._target_names) > 1:
+                raise
+            else:
+                networks[nn._target_names[0]] = nn
+    if rotdiv:
+        networks['efeETG_GB_div_efeETG_GB_rot0'] = QuaLiKizNDNN(nn_dict_fakey)
+    else:
+        networks = {name: net for name, net in networks.items() if 'rot' not in name}
+if rotdiv and nn_source is not 'QLKNN-networks':
     nN_mn_out = 8
     rot_ITG_list = [get_pure_from_hyperpar(
             'efiITG_GB_div_efiITG_GB_rot0', nN_mn_out,
@@ -114,20 +142,6 @@ if rotdiv:
     rot_TEM_list.append(get_pure_from_hyperpar('vtiTEM_GB_div_vtiTEM_GB_rot0', nN_mn_out, cost_l2_scale=5e-4))
     rot_TEM_list.append(get_pure_from_hyperpar('vceTEM_GB_div_vceTEM_GB_rot0', nN_mn_out, cost_l2_scale=5e-4))
     rot_TEM_list.append(get_pure_from_hyperpar('vciTEM_GB_div_vciTEM_GB_rot0', nN_mn_out, cost_l2_scale=5e-4))
-    nn_dict_fakey = {
-        'feature_names': ['Machtor'],
-        'target_names': ['efeETG_GB_div_efeETG_GB_rot0'],
-        'feature_min': {'Machtor': -np.inf},
-        'feature_max': {'Machtor': +np.inf},
-        'target_min': {'efeETG_GB_div_efeETG_GB_rot0': -np.inf},
-        'target_max': {'efeETG_GB_div_efeETG_GB_rot0': +np.inf},
-        'prescale_bias': {'Machtor': 0,
-                          'efeETG_GB_div_efeETG_GB_rot0': 1},
-        'prescale_factor': {'Machtor': 0,
-                            'efeETG_GB_div_efeETG_GB_rot0': -1},
-        'hidden_activation': [],
-        'output_activation': 'none'
-    }
     rot_Network_list = rot_ITG_list + rot_TEM_list
     rot_networks = {net.target_names[0]: net.to_QuaLiKizNDNN() for net in rot_Network_list}
     rot_networks['efeETG_GB_div_efeETG_GB_rot0'] = QuaLiKizNDNN(nn_dict_fakey)
@@ -161,6 +175,40 @@ combo_nn = QuaLiKizComboNN(pd.Series(combo_target_names), nets, combo_func)
 
 #vic_nn = VictorNN(combo_nn, gam)
 nn = LeadingFluxNN.add_leading_flux_clipping(combo_nn)
+qlknn_9D_feature_names = [
+        "Zeff",
+        "Ati",
+        "Ate",
+        "An",
+        "q",
+        "smag",
+        "x",
+        "Ti_Te",
+        "logNustar",
+    ]
+
+raptor_order = [
+    'efeETG_GB'              ,# 1
+    'efeITG_GB',# 2
+    'efeTEM_GB',# 3
+    'efiITG_GB',# 4
+    'efiTEM_GB',# 5
+    'pfeITG_GB',# 6
+    'pfeTEM_GB',# 7
+    'dfeITG_GB',# 8
+    'dfeTEM_GB',# 9
+    'vteITG_GB',# 10
+    'vteTEM_GB',# 11
+    'vceITG_GB',# 12
+    'vceTEM_GB',# 13
+    'dfiITG_GB',# 14
+    'dfiTEM_GB',# 15
+    'vtiITG_GB',# 16
+    'vtiTEM_GB',# 17
+    'vciITG_GB',# 18
+    'vciTEM_GB',# 19
+    'gam_leq_GB',
+    ];
 
 if __name__ == '__main__':
     scann = 24
@@ -187,7 +235,25 @@ if __name__ == '__main__':
     print('Combo NN')
     combo_flux = combo_nn.get_output(input, safe=True, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
     leading_flux = nn.get_output(input, safe=True, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
-    print(leading_flux)
+    print(leading_flux.loc[:, raptor_order[:-1]])
+    ['efeETG_GB', 'efiITG_GB', 'efeTEM_GB', 'vtiTEM_GB', 'dfiTEM_GB',
+       'vciITG_GB', 'dfeTEM_GB', 'vceTEM_GB', 'vciTEM_GB', 'pfeTEM_GB',
+       'vteITG_GB', 'vteTEM_GB', 'vceITG_GB', 'efeITG_GB', 'pfeITG_GB',
+       'dfeITG_GB', 'efiTEM_GB', 'vtiITG_GB', 'dfiITG_GB']
+    combined_fluxes = OrderedDict([
+        ('efe_GB', leading_flux[['efeETG_GB', 'efeITG_GB', 'efeTEM_GB']].sum(axis=1)),
+        ('efeETG_GB', leading_flux[['efeETG_GB']].sum(axis=1)),
+        ('efi_GB', leading_flux[['efiITG_GB', 'efiTEM_GB']].sum(axis=1)),
+        ('pfe_GB', leading_flux[['pfeITG_GB', 'pfeTEM_GB']].sum(axis=1)),
+        ('dfe_GB', leading_flux[['dfeITG_GB', 'dfeTEM_GB']].sum(axis=1)),
+        ('vte_GB', leading_flux[['vteITG_GB', 'vteTEM_GB']].sum(axis=1)),
+        ('vce_GB', leading_flux[['vceITG_GB', 'vceTEM_GB']].sum(axis=1)),
+        ('dfi_GB', leading_flux[['dfiITG_GB', 'dfiTEM_GB']].sum(axis=1)),
+        ('vti_GB', leading_flux[['vtiITG_GB', 'vtiTEM_GB']].sum(axis=1)),
+        ('vci_GB', leading_flux[['vciITG_GB', 'vciTEM_GB']].sum(axis=1)),
+    ])
+    combof = pd.DataFrame(combined_fluxes)
+    print(combof)
     embed()
     #input['gammaE'] = np.full_like(input['Ati'], 0.1)
     #print('Victor NN')
