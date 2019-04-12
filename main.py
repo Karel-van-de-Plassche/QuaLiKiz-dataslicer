@@ -31,6 +31,7 @@ import sys
 sys.path.append('../QLKNN-develop')
 sys.path.append('../QuaLiKiz-pythontools')
 sys.path.append('./bokeh-ion-rangeslider')
+sys.path.append('../QLKNN-develop/qlknn/models/')
 
 from bokeh_ion_rangeslider import IonRangeSlider
 try:
@@ -43,16 +44,18 @@ try:
     from qlknn.models.victor_rule import gammaE_QLK_to_gammaE_GB, gammaE_GB_to_gammaE_QLK, VictorNN
 except ModuleNotFoundError:
     print("Could not import QuaLiKizNDNN")
+    plot_nn = False
 try:
     from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
 except ModuleNotFoundError:
     print("Could not import QuaLiKizFortranNN")
-else:
+    plot_nn = False
+if plot_nn:
     try:
         import mega_nn
-        plot_nn = True
     except:
         print('Could not import mega_nn')
+        plot_nn = False
 from qualikiz_tools.misc.conversion import calc_nustar_from_parts, calc_te_from_nustar, calc_puretor_gradient, calc_epsilon_from_parts, calc_puretor_gradient
 
 def takespread(sequence, num, repeat=1):
@@ -124,7 +127,8 @@ def extract_plotdata(sel_dict):
                     elif name == 'logNustar' and 'Nustar' in ds.attrs:
                         input[name] = np.log10(ds.attrs['Nustar'])
 
-            if isinstance(nn, QuaLiKizFortranNN) or (plot_victor and hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)):
+            if plot_victor and ((hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)) or # Has victor rule
+                                isinstance(nn, QuaLiKizFortranNN)): #Is Fortran NN
                 vars = pd.DataFrame()
                 for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
                     if name in input:
@@ -134,47 +138,23 @@ def extract_plotdata(sel_dict):
                 if 'logNustar' in vars:
                     vars['Nustar'] = 10**vars.pop('logNustar')
                 Te = calc_te_from_nustar(*[vars[name] for name in ['Zeff', 'ne', 'Nustar', 'q', 'Ro', 'Rmin', 'x']])
-                if 'gammaE' in sel_dict:
-                    gammaE_QLK = sel_dict['gammaE']
-                elif xaxis_name == 'gammaE':
-                    gammaE_QLK = input.pop('gammaE')
-                elif 'Machtor' in sel_dict or xaxis_name == 'Machtor':
-                    x = input['x']
-                    q = input['q']
-                    epsilon = calc_epsilon_from_parts(x,
-                                                      ds.attrs['Rmin'],
-                                                      ds.attrs['Ro'])
-                    # Assume relation from JET DB
-                    if 'Machtor' in sel_dict:
-                        Machtor = sel_dict['Machtor']
-                    elif xaxis_name == 'Machtor':
-                        Machtor = input.pop('Machtor').values
-                    Autor = Machtor / 0.1401
-                    [__, __, gammaE_QLK] = calc_puretor_gradient(epsilon, q, Autor=Autor)
-                if isinstance(nn, QuaLiKizFortranNN):
-                    input['gammaE_QLK'] = gammaE_QLK
-                else:
-                    input['gammaE_GB'] = gammaE_QLK_to_gammaE_GB(gammaE_QLK, Te, ds.attrs['Ai'][0])
+                if 'gammaE_QLK' in sel_dict:
+                    gammaE_QLK = sel_dict['gammaE_QLK']
+                elif xaxis_name == 'gammaE_QLK':
+                    gammaE_QLK = input.pop('gammaE_QLK')
 
-            df_nn = nn.get_output(input)
+                if hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN):
+                    df_nn = nn.get_output(input)
+                elif isinstance(nn, QuaLiKizFortranNN):
+                    input['Te'] = Te
+                    print(input)
+                    df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=ds.attrs['Ai'][0])
             if gam_leq_nns[nn_name] is not None:
                 df_gam_leq = gam_leq_nns[nn_name].get_output(input)
                 gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
                 df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
             df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
-            not_there = [var for var in fluxlike_vars if var not in df_nn.columns]
-            for var in not_there:
-                df_nn.loc[:, var] = np.NaN
             df_nn.columns = [nn_name + '_' + name for name in df_nn.columns]
-            if plot_victor and xaxis_name == rotvar and isinstance(nn._internal_network, VictorNN):
-                gammaE = gammaE_GB_to_gammaE_QLK(input.pop('gammaE_GB'), Te, ds.attrs['Ai'][0])
-                if rotvar == 'gammaE':
-                    input['gammaE'] = gammaE
-                elif rotvar == 'Machtor':
-                    Autor = [__, Autor, __] = calc_puretor_gradient(epsilon, q, gammaE=gammaE)
-                    # Assume relation from JET DB
-                    Machtor = Autor * 0.1401
-                    input['Machtor'] = Machtor
             #df_nn.index = (input[xaxis_name])
             #df_nn.index.name = 'xaxis'
             #df_nn.reset_index(inplace=True)
@@ -191,7 +171,7 @@ def extract_plotdata(sel_dict):
         df_freq = pd.DataFrame()
     #df_freq.index.set_names('xaxis', level='kthetarhos', inplace=True)
 
-    if fake_rotvar and slice_['gammaE'] != 0:
+    if fake_rotvar and slice_['gammaE_QLK'] != 0:
         df_flux = pd.DataFrame()
 
     return df_flux, df_freq, df_nns, df_rot
@@ -323,7 +303,7 @@ plot_pinch = False
 plot_df = False
 plot_sepflux = True
 plot_victor = True
-rotvar = 'Machtor'
+rotvar = 'gammaE_QLK'
 plot_full = True
 sepflux_names = ['ITG', 'TEM']
 
@@ -414,8 +394,8 @@ if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
     nn0 = mega_nn.nn
     nns = OrderedDict([('gen_3', nn0)])
-    nn1 = QuaLiKizFortranNN('/home/karel/working/QLKNN-fortran/lib')
-    nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
+    #nn1 = QuaLiKizFortranNN('/home/karel/QLKNN-fortran/lib')
+    #nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
 else:
     nns = {}
 
@@ -448,6 +428,9 @@ ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_
 
 fake_rotvar = False
 if plot_victor:
+    for nn_name, nn in nns.items():
+        if isinstance(nn, QuaLiKizFortranNN): #Is Fortran NN
+            nn.apply_victor_rule = True
     if rotvar in ds.coords:
         fake_rotvar = False
         if rotvar in ds_rot.coords:
@@ -473,6 +456,10 @@ for nn_name, nn in nns.items():
                 if hasattr(nn._internal_network, '_internal_network'):
                     if 'gam_leq_GB' in nn._internal_network._internal_network._target_names.values:
                         gam_leq_nns[nn_name] = nn._internal_network._internal_network
+try:
+    del nn
+except NameError:
+    pass
 
 
 ############################################################
