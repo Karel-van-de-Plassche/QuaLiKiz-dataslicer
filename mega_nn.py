@@ -6,7 +6,7 @@ import numpy as np
 from IPython import embed
 
 #sys.path.append('../QuaLiKiz-pythontools')
-sys.path.append('/QLKNN-develop/qlknn/models/')
+sys.path.append('../QLKNN-develop/qlknn/models/')
 from qlknn.NNDB.model import Network, select_from_candidate_query, get_pure_from_cost_l2_scale, get_from_cost_l2_scale_array, get_pure_from_hyperpar
 from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
 from qlknn.models.ffnn import QuaLiKizNDNN, QuaLiKizComboNN

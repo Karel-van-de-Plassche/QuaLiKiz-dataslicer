@@ -38,7 +38,7 @@ try:
     ModuleNotFoundError
 except:
     ModuleNotFoundError = ImportError
-plot_nn = False
+plot_nn = True
 try:
     from qlknn.models.ffnn import QuaLiKizNDNN
     from qlknn.models.victor_rule import gammaE_QLK_to_gammaE_GB, gammaE_GB_to_gammaE_QLK, VictorNN
@@ -147,8 +147,8 @@ def extract_plotdata(sel_dict):
                     df_nn = nn.get_output(input)
                 elif isinstance(nn, QuaLiKizFortranNN):
                     input['Te'] = Te
-                    print(input)
-                    df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=ds.attrs['Ai'][0])
+                    vars['Ai1'] = ds.attrs['Ai'][0]
+                    df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=vars['Ai1'])
             if gam_leq_nns[nn_name] is not None:
                 df_gam_leq = gam_leq_nns[nn_name].get_output(input)
                 gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
@@ -393,7 +393,7 @@ if plot_sepflux:
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
     nn0 = mega_nn.nn
-    nns = OrderedDict([('gen_3', nn0)])
+    nns = OrderedDict([('gen_4', nn0)])
     #nn1 = QuaLiKizFortranNN('/home/karel/QLKNN-fortran/lib')
     #nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
 else:
@@ -430,7 +430,7 @@ fake_rotvar = False
 if plot_victor:
     for nn_name, nn in nns.items():
         if isinstance(nn, QuaLiKizFortranNN): #Is Fortran NN
-            nn.apply_victor_rule = True
+            nn.opts.apply_victor_rule = True
     if rotvar in ds.coords:
         fake_rotvar = False
         if rotvar in ds_rot.coords:
