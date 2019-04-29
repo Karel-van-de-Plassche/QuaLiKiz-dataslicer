@@ -1,5 +1,6 @@
 import os
 import sys
+from warnings import warn
 
 import pandas as pd
 import numpy as np
@@ -15,28 +16,12 @@ from qlknn.models.clipping import LeadingFluxNN
 from qlknn.models.victor_rule import VictorNN
 from qlknn.misc.analyse_names import is_pure, is_flux, is_transport, split_parts, extract_part_names
 
-nn_dict_fakey = {
-    'feature_names': ['Machtor'],
-    'target_names': ['efeETG_GB_div_efeETG_GB_rot0'],
-    'feature_min': {'Machtor': -np.inf},
-    'feature_max': {'Machtor': +np.inf},
-    'target_min': {'efeETG_GB_div_efeETG_GB_rot0': -np.inf},
-    'target_max': {'efeETG_GB_div_efeETG_GB_rot0': +np.inf},
-    'prescale_bias': {'Machtor': 0,
-                      'efeETG_GB_div_efeETG_GB_rot0': 1},
-    'prescale_factor': {'Machtor': 0,
-                        'efeETG_GB_div_efeETG_GB_rot0': -1},
-    'hidden_activation': [],
-    'output_activation': 'none'
-}
-
 def combo_func(*args):
     return np.hstack(args)
 
 nn_source = 'NNDB'
 nn_source = 'QLKNN-networks'
-nn_source = 'RAPTOR_gen3_nets'
-nn_source = 'QLKNN-fortran'
+#nn_source = 'QLKNN-fortran'
 if nn_source == 'NNDB':
     nN_mn_out = 7
 
@@ -87,30 +72,22 @@ if nn_source == 'NNDB':
     combo_target_names = []
     networks = {net.target_names[0]: net.to_QuaLiKizNDNN() for net in Network_list}
 
-
-    #for net in Network_list:
-    #    combo_target_names.extend(net.target_names)
-    #.append(gam._target_names, ignore_index=True)
-elif nn_source in ['RAPTOR_gen3_nets']:
-    from collections import OrderedDict
-    networks = OrderedDict()
-    for path in os.listdir(nn_source):
-        nn = QuaLiKizNDNN.from_json(os.path.join(nn_source, path + '/nn.json'))
-        if len(nn._target_names) > 1:
-            raise
-        else:
-            networks[nn._target_names[0]] = nn
 elif nn_source in ['QLKNN-networks']:
     from collections import OrderedDict
     networks = OrderedDict()
-    for path in os.listdir(nn_source):
+    nn_folder = nn_source
+    if len(os.listdir(nn_folder)) == 0:
+        warn("QLKNN-network folder '{!s}' empty".format(nn_folder))
+    for path in os.listdir(nn_folder):
         if path.endswith('.json'):
-            nn = QuaLiKizNDNN.from_json(os.path.join(nn_source, path))
+            nn = QuaLiKizNDNN.from_json(os.path.join(nn_folder, path))
             if len(nn._target_names) > 1:
-                raise
+                raise Exception('Multi-target NN! Not sure what to do..')
             else:
                 networks[nn._target_names[0]] = nn
     networks = {name: net for name, net in networks.items()}
+    if len(networks) == 0:
+        warn("Did not find any networks in '{!s}'! Does it contain the JSONs?")
 
 if nn_source != 'QLKNN-fortran':
     # Match all div networks with their leading fluxes
@@ -125,7 +102,11 @@ if nn_source != 'QLKNN-fortran':
                                 lambda x, y: x * y)
             networks[target] = nn_norot
 
-    gam = networks.pop('gam_leq_GB')
+    if 'gam_leq_GB' in networks:
+        gam_name = 'gam_leq_GB'
+    else:
+        raise Exception('No gam network found!')
+    gam = networks.pop(gam_name)
     nets = list(networks.values())
     combo_target_names = list(networks.keys())
 
@@ -197,6 +178,7 @@ if __name__ == '__main__':
     #print(TEM.get_output(input, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound))
     #print(ETG.get_output(input, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound))
     print('Combo NN')
+    leading_flux = nn.get_output(input, safe=True, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
     if combo_nn:
         combo_flux = combo_nn.get_output(input, safe=True, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
         combined_fluxes = OrderedDict([
@@ -213,7 +195,6 @@ if __name__ == '__main__':
         ])
         combof = pd.DataFrame(combined_fluxes)
         print(combof)
-    leading_flux = nn.get_output(input, safe=True, clip_high=False, clip_low=False, high_bound=high_bound, low_bound=low_bound)
     print(leading_flux.loc[:, raptor_order[:-1]])
     embed()
     #input['gammaE'] = np.full_like(input['Ati'], 0.1)
