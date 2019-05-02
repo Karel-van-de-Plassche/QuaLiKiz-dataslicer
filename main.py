@@ -149,11 +149,15 @@ def extract_plotdata(sel_dict):
                     input['Te'] = Te
                     vars['Ai1'] = ds.attrs['Ai'][0]
                     df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=vars['Ai1'])
+            else:
+                df_nn = nn.get_output(input)
             if gam_leq_nns[nn_name] is not None:
                 df_gam_leq = gam_leq_nns[nn_name].get_output(input)
                 gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
                 df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
             df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
+            for var in set(fluxlike_vars) - set(df_nn.columns):
+                df_nn[var] = np.NaN
             df_nn.columns = [nn_name + '_' + name for name in df_nn.columns]
             #df_nn.index = (input[xaxis_name])
             #df_nn.index.name = 'xaxis'
@@ -392,6 +396,9 @@ if plot_sepflux:
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
+    #from qlknn.models.ffnn import QuaLiKizLessDNN
+    #const_dict = {'Machtor': 0, 'alpha': 0, 'Autor':0, 'rho':.5,}
+    #nn = QuaLiKizLessDNN.from_json('./nn_bck001.json', const_dict=const_dict, Zi=[1, 6])
     nn0 = mega_nn.nn
     nns = OrderedDict([('gen_4', nn0)])
     #nn1 = QuaLiKizFortranNN('/home/karel/QLKNN-fortran/lib')
