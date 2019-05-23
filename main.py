@@ -21,7 +21,7 @@ from IPython import embed
 from bokeh.plotting import figure, show, reset_output, Figure
 from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox
 from bokeh.models.widgets import Button, Div
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, Band
 from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, CustomJS, Legend, Line, Circle
 from bokeh.palettes import Set1 as sepcolor
@@ -156,6 +156,16 @@ def extract_plotdata(sel_dict):
                 gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
                 df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
             df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
+            not_there = [var for var in fluxlike_vars if var not in df_nn.columns]
+            if plot_nn_eb:
+                cols_with_eb = [col[:-3] for col in df_nn.columns if col.endswith('_EB')]
+                for col in cols_with_eb:
+                    df_nn[col + '_LEB'] = df_nn.loc[:, col] - df_nn.loc[:, col + '_EB']
+                    df_nn[col + '_UEB'] = df_nn.loc[:, col] + df_nn.loc[:, col + '_EB']
+                    df_nn.drop(col + '_EB', axis=1, inplace=True)
+                not_there += [var + '_LEB' for var in fluxlike_vars if var not in df_nn.columns]
+                not_there += [var + '_UEB' for var in fluxlike_vars if var not in df_nn.columns]
+                df_nn['efiITG_GB_EB'] = 1
             for var in set(fluxlike_vars) - set(df_nn.columns):
                 df_nn[var] = np.NaN
             df_nn.columns = [nn_name + '_' + name for name in df_nn.columns]
@@ -385,6 +395,8 @@ elif style == 'all':
 else:
     raise Exception('Style {!s} not defined'.format(style))
 norm = '_GB'
+plot_nn_eb = True
+show_legend = False
 
 if plot_full:
     flux_suffixes = ['']
@@ -631,26 +643,43 @@ for pre, species, suff, norm in flux_vars:
     fig = fluxfigs[figname]
     for nn_name in dashes.keys():
         if nn_name == 'qlk':
+            if show_legend:
+                legend = species
+            else:
+                legend = None
             glyph = fig.scatter('xaxis', fluxname,
                                 source=flux_source,
                                 color=colors[species],
-                                legend=species
+                                legend=legend,
                                )
             glyph = fig.scatter('xaxis', fluxname,
                                 source=rot_source,
                                 color=rot_colors[species],
-                                legend=species
+                                legend=legend,
                                )
         else:
             for nn in nns.values():
                 if (fluxname in list(nn._target_names) or
                    (pre == 'gam' and not all([nn is None for nn in gam_leq_nns.values()]))):
+                    if show_legend:
+                        legend = nn_name
+                    else:
+                        legend = None
                     glyph = fig.line('xaxis', nn_name + '_' + fluxname,
                                      source=nn_source,
                                      color=colors[species],
                                      line_dash=dashes[nn_name],
-                                     legend=nn_name
+                                     legend=legend,
                                     )
+                    if plot_nn_eb:
+                        band = Band(base='xaxis',
+                                    lower=nn_name + '_' + fluxname + '_LEB',
+                                    upper=nn_name + '_' + fluxname + '_UEB',
+                                    source=nn_source,
+                                    level='underlay',
+                                    fill_alpha=1.0, line_width=0,
+                                    line_color=colors[species])
+                        fig.add_layout(band)
             del nn
 
 ############################################################
