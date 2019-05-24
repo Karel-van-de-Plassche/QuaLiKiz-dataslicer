@@ -49,7 +49,6 @@ try:
     from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
 except ModuleNotFoundError:
     print("Could not import QuaLiKizFortranNN")
-    plot_nn = False
 if plot_nn:
     try:
         import mega_nn
@@ -127,8 +126,12 @@ def extract_plotdata(sel_dict):
                     elif name == 'logNustar' and 'Nustar' in ds.attrs:
                         input[name] = np.log10(ds.attrs['Nustar'])
 
+            try:
+                is_fortranNN = isinstance(nn, QuaLiKizFortranNN)
+            except NameError:
+                is_fortranNN = False
             if plot_victor and ((hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)) or # Has victor rule
-                                isinstance(nn, QuaLiKizFortranNN)): #Is Fortran NN
+                                is_fortranNN): #Is Fortran NN
                 vars = pd.DataFrame()
                 for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
                     if name in input:
@@ -395,8 +398,8 @@ elif style == 'all':
 else:
     raise Exception('Style {!s} not defined'.format(style))
 norm = '_GB'
-plot_nn_eb = True
-show_legend = False
+plot_nn_eb = False
+show_legend = True
 
 if plot_full:
     flux_suffixes = ['']
@@ -446,9 +449,14 @@ fluxlike_vars = [''.join(var) for var in flux_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
 fake_rotvar = False
+try:
+    is_fortranNN = isinstance(nn, QuaLiKizFortranNN)
+except NameError:
+    is_fortranNN = False
+
 if plot_victor:
     for nn_name, nn in nns.items():
-        if isinstance(nn, QuaLiKizFortranNN): #Is Fortran NN
+        if is_fortranNN:
             nn.opts.apply_victor_rule = True
     if rotvar in ds.coords:
         fake_rotvar = False

@@ -8,8 +8,6 @@ from IPython import embed
 
 #sys.path.append('../QuaLiKiz-pythontools')
 sys.path.append('../QLKNN-develop/qlknn/models/')
-from qlknn.NNDB.model import Network, select_from_candidate_query, get_pure_from_cost_l2_scale, get_from_cost_l2_scale_array, get_pure_from_hyperpar
-from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
 from qlknn.models.ffnn import QuaLiKizNDNN, QuaLiKizComboNN
 from qlknn.models.rotdiv import RotDivNN
 from qlknn.models.clipping import LeadingFluxNN
@@ -22,6 +20,10 @@ def combo_func(*args):
 nn_source = 'NNDB'
 nn_source = 'QLKNN-networks'
 #nn_source = 'QLKNN-fortran'
+if nn_source == 'NNDB':
+    from qlknn.NNDB.model import Network, select_from_candidate_query, get_pure_from_cost_l2_scale, get_from_cost_l2_scale_array, get_pure_from_hyperpar
+if nn_source == 'QLKNN-fortran':
+    from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
 if nn_source == 'NNDB':
     nN_mn_out = 7
 
