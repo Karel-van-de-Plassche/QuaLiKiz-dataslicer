@@ -415,6 +415,9 @@ if plot_nn:
     #const_dict = {'Machtor': 0, 'alpha': 0, 'Autor':0, 'rho':.5,}
     #nn = QuaLiKizLessDNN.from_json('./nn_bck001.json', const_dict=const_dict, Zi=[1, 6])
     nn0 = mega_nn.nn
+    #from qlknn.models.kerasmodel import Philipp7DNN
+    #nn1 = Philipp7DNN.from_files('CGNN_L2_1000_2.h5', 'training_gen3_7D_nions0_flat_filter8.csv', GB_scale_length=3.)
+    #nns = OrderedDict([('gen_4', nn0), ('CGNN', nn1)])
     nns = OrderedDict([('gen_4', nn0)])
     #nn1 = QuaLiKizFortranNN('/home/karel/QLKNN-fortran/lib')
     #nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
