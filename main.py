@@ -171,6 +171,13 @@ def extract_plotdata(sel_dict):
                 df_nn['efiITG_GB_EB'] = 1
             for var in set(fluxlike_vars) - set(df_nn.columns):
                 df_nn[var] = np.NaN
+            if plot_nn_eb:
+                for var in ((set([var + '_LEB' for var in fluxlike_vars]) |
+                             set([var + '_UEB' for var in fluxlike_vars])) -
+                            set(df_nn.columns)
+                            ):
+                    df_nn[var] = np.NaN
+
             df_nn.columns = [nn_name + '_' + name for name in df_nn.columns]
             #df_nn.index = (input[xaxis_name])
             #df_nn.index.name = 'xaxis'
@@ -398,7 +405,7 @@ elif style == 'all':
 else:
     raise Exception('Style {!s} not defined'.format(style))
 norm = '_GB'
-plot_nn_eb = False
+plot_nn_eb = True
 show_legend = True
 
 if plot_full:
@@ -411,14 +418,15 @@ if plot_sepflux:
 
 if plot_nn:
     #nn = QuaLiKizNDNN.from_json('nn.json')
-    #from qlknn.models.ffnn import QuaLiKizLessDNN
-    #const_dict = {'Machtor': 0, 'alpha': 0, 'Autor':0, 'rho':.5,}
-    #nn = QuaLiKizLessDNN.from_json('./nn_bck001.json', const_dict=const_dict, Zi=[1, 6])
+    #from qlknn.models.committee import QuaLikizCommitteeNN
+    #const_dict = {'Machtor': 0, 'alpha': 0, 'Autor':0}
+    #nns = [QuaLiKizLessDNN.from_json('./nn{0:03d}.json'.format(ii), const_dict=const_dict, Zi=[1, 6]) for ii in range(1, 11)]
+    #nn1 = QuaLikizCommitteeNN(nns)
     nn0 = mega_nn.nn
     #from qlknn.models.kerasmodel import Philipp7DNN
     #nn1 = Philipp7DNN.from_files('CGNN_L2_1000_2.h5', 'training_gen3_7D_nions0_flat_filter8.csv', GB_scale_length=3.)
-    #nns = OrderedDict([('gen_4', nn0), ('CGNN', nn1)])
-    nns = OrderedDict([('gen_4', nn0)])
+    nns = OrderedDict([('gen4', nn0)])
+    #nns = OrderedDict([('gen_4', nn0)])
     #nn1 = QuaLiKizFortranNN('/home/karel/QLKNN-fortran/lib')
     #nns = OrderedDict([('gen_3', nn0), ('JETTO', nn1)])
 else:
