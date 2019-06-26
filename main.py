@@ -130,7 +130,7 @@ def extract_plotdata(sel_dict):
                 is_fortranNN = isinstance(nn, QuaLiKizFortranNN)
             except NameError:
                 is_fortranNN = False
-            if plot_victor and ((hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)) or # Has victor rule
+            if plot_rot and plot_victor and ((hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)) or # Has victor rule
                                 is_fortranNN): #Is Fortran NN
                 vars = pd.DataFrame()
                 for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
@@ -332,6 +332,7 @@ plot_freq = True
 plot_df = False
 plot_sepflux = True
 plot_victor = True
+plot_rot = True
 rotvar = 'gammaE_QLK'
 plot_full = True
 sepflux_names = ['ITG', 'TEM']
@@ -479,8 +480,12 @@ try:
 except NameError:
     is_fortranNN = False
 
-fake_rotvar = True
-if plot_victor:
+if plot_rot:
+    fake_rotvar = True
+else:
+    fake_rotvar = False
+
+if plot_rot and plot_victor:
     for nn_name, nn in nns.items():
         if is_fortranNN:
             nn.opts.apply_victor_rule = True
