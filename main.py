@@ -91,7 +91,7 @@ def extract_plotdata(sel_dict):
             if k not in ds_rot.dims:
                 if not np.isclose(v, ds_rot.attrs[k]):
                     raise KeyError
-    except KeyError as ee:
+    except (KeyError, NameError) as ee:
         df_rot = pd.DataFrame()
     else:
         if 'nions' in slice_rot.dims:
@@ -459,29 +459,34 @@ if plot_grow:
 fluxlike_vars = [''.join(var) for var in flux_vars]
 ds = ds.drop([name for name in ds.data_vars if name not in freq_vars + fluxlike_vars])
 
-fake_rotvar = False
 try:
     is_fortranNN = isinstance(nn, QuaLiKizFortranNN)
 except NameError:
     is_fortranNN = False
 
+fake_rotvar = True
 if plot_victor:
     for nn_name, nn in nns.items():
         if is_fortranNN:
             nn.opts.apply_victor_rule = True
     if rotvar in ds.coords:
         fake_rotvar = False
-        if rotvar in ds_rot.coords:
-            raise Exception('Two datasets with {!s}'.format(rotvar))
+        try:
+            if rotvar in ds_rot.coords:
+                raise Exception('Two datasets with {!s}'.format(rotvar))
+        except NameError:
+            pass
     else:
-        if rotvar in ds_rot.coords:
-            fake_rotvar = False
-            ds.coords[rotvar] = ds_rot.coords[rotvar]
-            scan_dims.append(rotvar)
-        else:
-            fake_rotvar = True
-            ds.coords[rotvar] = np.linspace(0, 1, 10)
-            scan_dims.append(rotvar)
+        try:
+            if rotvar in ds_rot.coords:
+                fake_rotvar = False
+                ds.coords[rotvar] = ds_rot.coords[rotvar]
+                scan_dims.append(rotvar)
+        except NameError:
+            pass
+if fake_rotvar:
+    ds.coords[rotvar] = np.linspace(0, 1, 10)
+    scan_dims.append(rotvar)
 
 # Look if we have a gam network somewhere deeper
 gam_leq_nns = {nn_name: None for nn_name in nns.keys()}
