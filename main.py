@@ -329,7 +329,6 @@ if 'qx' in ds.dims:
 
 plot_nn = plot_nn and True
 plot_freq = True
-plot_pinch = False
 plot_df = False
 plot_sepflux = True
 plot_victor = True
@@ -344,11 +343,11 @@ style = 'thermodiffusion'
 style = 'convection'
 style = 'TEM'
 style = 'all'
+#style = 'custom'
 if style == 'heat':
     plot_ef = True
     plot_pf = False
     plot_grow = False
-    plot_pinch = False
     sepflux_names.insert(0, 'ETG')
     plot_df = False
     plot_vt = False
@@ -408,6 +407,16 @@ elif style == 'all':
     plot_vt = True
     plot_vc = True
     sepflux_names.insert(0, 'ETG')
+elif style == 'custom':
+    plot_ef = True
+    plot_pf = False
+    plot_freq = False
+    plot_grow = False
+    plot_full = True
+    sepflux_names.insert(0, 'ETG')
+    plot_df = False
+    plot_vt = False
+    plot_vc = False
 else:
     raise Exception('Style {!s} not defined'.format(style))
 norm = '_GB'
