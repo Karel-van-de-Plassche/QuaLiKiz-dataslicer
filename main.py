@@ -600,10 +600,15 @@ fluxfigs = OrderedDict()
 for (pre, species, suffix, norm) in flux_vars:
     figname = pre + suffix
     if figname not in fluxfigs:
+        tags = ['fluxlike', pre, species, norm]
+        if suffix == '':
+            tags.append('total')
+        else:
+            tags.append(suffix)
         fluxfigs[figname]   = Figure(x_axis_label=xaxis_name,
                                           y_axis_label=labels[pre] + ' ' + suffix + ' [' + norm[1:] + ']',
                                           height=2*height_block, width=2*height_block,
-                                          tools=flux_tools, x_range=x_range, tags=['fluxlike', pre, species, suffix, norm],
+                                          tools=flux_tools, x_range=x_range, tags=tags,
                                           sizing_mode=sizing_mode
                                           )
         curdoc().add_root(fluxfigs[figname])
