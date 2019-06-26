@@ -211,11 +211,11 @@ def swap_x(attr, old, new):
         source.data = {name: [] for name in source.column_names}
     for fig in fluxfigs.values():
         if xaxis_name == 'gammaE':
-            fig.x_range.start = float(max(ds[xaxis_name]))
-            fig.x_range.end = float(min(ds[xaxis_name]))
+            fig.x_range.start = float(ds[xaxis_name].max())
+            fig.x_range.end = float(ds[xaxis_name].min())
         else:
-            fig.x_range.start = float(min(ds[xaxis_name]))
-            fig.x_range.end = float(max(ds[xaxis_name]))
+            fig.x_range.start = float(ds[xaxis_name].min())
+            fig.x_range.end = float(ds[xaxis_name].max())
         fig.xaxis.axis_label = xaxis_name
     updater(None, None, None)
 
