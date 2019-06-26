@@ -287,6 +287,7 @@ else:
     root_dir = '../qlk_data'
 ds_to_plot = '9D'
 #ds_to_plot = 'rot_one'
+#ds_to_plot = 'bart'
 constrain_to_rot = False
 if ds_to_plot == '9D':
     ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
@@ -306,6 +307,11 @@ if ds_to_plot == '9D':
 
 elif ds_to_plot == 'rot_one':
     ds = xr.open_dataset(os.path.join(root_dir, 'rot_one.nc'))
+elif ds_to_plot == 'bart':
+    ds = xr.open_dataset(os.path.join(root_dir, '../NN-data/qlk_run/qlk_run.nc'))
+    ds['Ati0'] = ds['Ati']
+    ds = ds.swap_dims({'Ati': 'Ati0'})
+
 #ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 if 'Nustar' in ds.dims:
     ds['logNustar'] = np.log10(ds['Nustar'])
