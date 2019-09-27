@@ -150,7 +150,7 @@ def extract_plotdata(sel_dict):
                     df_nn = nn.get_output(input)
                 elif isinstance(nn, QuaLiKizFortranNN):
                     input['Te'] = Te
-                    vars['Ai1'] = ds.attrs['Ai'][0]
+                    vars['Ai1'] = ds.attrs['Ai']
                     df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=vars['Ai1'])
             else:
                 df_nn = nn.get_output(input)
@@ -284,18 +284,20 @@ import socket
 if socket.gethostname().startswith('rs'):
     root_dir = '/Rijnh/Shares/Departments/Fusiefysica/IMT/karel'
 else:
-    root_dir = '../qlk_data'
+    root_dir = '../qlk_data/gen5'
 ds_to_plot = '9D'
 #ds_to_plot = 'rot_one'
 #ds_to_plot = 'bart'
 constrain_to_rot = False
 if ds_to_plot == '9D':
-    ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.combo.nions0.nc.1'))
+    ds = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo_prepared.nc.1'))
+    grow_path = os.path.join(root_dir, 'Zeffcombo.grow.nc')
+    if os.path.isfile(grow_path):
+        ds_grow = xr.open_dataset(grow_path)
+        ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
+        ds = ds.merge(ds_grow)
     ds_rot = xr.open_dataset(os.path.join(root_dir, 'rot_three.nc.1'))
     ds_rot.attrs['logNustar'] = np.log10(ds_rot.attrs['Nustar'])
-    ds_grow = xr.open_dataset(os.path.join(root_dir, 'Zeffcombo.grow.nc'))
-    ds_grow = ds_grow.drop([x for x in ds_grow.coords if x not in ds_grow.dims and x not in ['Zi']])
-    ds = ds.merge(ds_grow)
     ds.attrs['ne'] = ds.attrs.pop('Nex')
     if constrain_to_rot:
         dummy_var = 'efe_GB'
