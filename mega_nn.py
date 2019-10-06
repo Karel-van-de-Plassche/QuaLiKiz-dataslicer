@@ -40,19 +40,25 @@ if nn_source == 'QLKNN-fortran':
     from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
     print('Loading FORTRAN network')
     fnn = QuaLiKizFortranNN('/home/karel/working/QLKNN-fortran/lib/src/qlknn-hyper-namelists')
-    combo_nns = []
-    target_names = []
-    summers = []
-    idxs = {}
-    prefixes = ['efe', 'efi', 'pfe', 'dfe', 'vte', 'vce', 'dfi', 'vti', 'vci']
-    for prefix in prefixes:
-        fnn.opts.force_evaluate_all = True
-        this_idx = [fnn._target_names.index(name) for name in fnn._target_names if name.startswith(prefix)]
-        summers.append(Summer(this_idx))
-        print('Creating', prefix, 'network')
-        combo_nns.append(QuaLiKizComboNN(pd.Series([prefix + '_GB']), [fnn], summers[-1].sum))
-        target_names.append(prefix + '_GB')
-    combo_nn = QuaLiKizComboNN(target_names + fnn._target_names, combo_nns + [fnn], combo_func)
+    fnn.opts.merge_modes = 0
+    fnn.opts.force_evaluate_all = 1
+    combo_fnn = QuaLiKizFortranNN('/home/karel/working/QLKNN-fortran/lib/src/qlknn-hyper-namelists')
+    combo_fnn.opts.merge_modes = 1
+    combo_nn = QuaLiKizComboNN(combo_fnn._target_names + fnn._target_names, [combo_fnn, fnn], combo_func)
+    # Nested-python ComboNetwork way
+    #combo_nns = []
+    #target_names = []
+    #summers = []
+    #idxs = {}
+    #prefixes = ['efe', 'efi', 'pfe', 'dfe', 'vte', 'vce', 'dfi', 'vti', 'vci']
+    #for prefix in prefixes:
+    #    fnn.opts.force_evaluate_all = True
+    #    this_idx = [fnn._target_names.index(name) for name in fnn._target_names if name.startswith(prefix)]
+    #    summers.append(Summer(this_idx))
+    #    print('Creating', prefix, 'network')
+    #    combo_nns.append(QuaLiKizComboNN(pd.Series([prefix + '_GB']), [fnn], summers[-1].sum))
+    #    target_names.append(prefix + '_GB')
+    #combo_nn = QuaLiKizComboNN(target_names + fnn._target_names, combo_nns + [fnn], combo_func)
     nn = combo_nn
 elif nn_source == 'NNDB':
     nN_mn_out = 7
