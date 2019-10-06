@@ -127,7 +127,14 @@ def extract_plotdata(sel_dict):
                         input[name] = np.log10(ds.attrs['Nustar'])
 
             try:
-                is_fortranNN = isinstance(nn, QuaLiKizFortranNN)
+                is_fortranNN = (
+                    isinstance(nn, QuaLiKizFortranNN) or
+                    (hasattr(nn, '_nns') and
+                     isinstance(nn._nns[0], QuaLiKizFortranNN)) or
+                    (hasattr(nn, '_nns') and
+                     hasattr(nn._nns[0], '_nns') and
+                     isinstance(nn._nns[0]._nns[0], QuaLiKizFortranNN))
+                )
             except NameError:
                 is_fortranNN = False
             if plot_rot and plot_victor and ((hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)) or # Has victor rule
@@ -148,7 +155,7 @@ def extract_plotdata(sel_dict):
 
                 if hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN):
                     df_nn = nn.get_output(input)
-                elif isinstance(nn, QuaLiKizFortranNN):
+                elif is_fortranNN:
                     input['Te'] = Te
                     vars['Ai1'] = ds.attrs['Ai']
                     df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=vars['Ai1'])
@@ -404,7 +411,7 @@ elif style == 'all':
     plot_ef = True
     plot_freq = False
     plot_grow = False
-    plot_full = False
+    plot_full = True
     plot_pf = True
     plot_df = True
     plot_vt = True
