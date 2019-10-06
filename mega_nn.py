@@ -5,6 +5,7 @@ from warnings import warn
 import pandas as pd
 import numpy as np
 from IPython import embed
+from collections import OrderedDict
 
 #sys.path.append('../QuaLiKiz-pythontools')
 sys.path.append('../QLKNN-develop/qlknn/models/')
@@ -17,14 +18,43 @@ from qlknn.misc.analyse_names import is_pure, is_flux, is_transport, split_parts
 def combo_func(*args):
     return np.hstack(args)
 
+class Summer():
+    def __init__(self, idx):
+        self.idx = idx
+
+    def sum(self, *outp):
+        if isinstance(outp, pd.DataFrame):
+            raise NotImplementedError
+        else:
+            if outp[0].ndim == 1:
+                return np.atleast_1d(np.sum(outp[0][self.idx]))
+            else:
+                return np.atleast_2d(np.sum(outp[0][:,self.idx], axis=1)).T
+
 nn_source = 'NNDB'
 nn_source = 'QLKNN-networks'
-#nn_source = 'QLKNN-fortran'
+nn_source = 'QLKNN-fortran'
 if nn_source == 'NNDB':
     from qlknn.NNDB.model import Network, select_from_candidate_query, get_pure_from_cost_l2_scale, get_from_cost_l2_scale_array, get_pure_from_hyperpar
 if nn_source == 'QLKNN-fortran':
     from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
-if nn_source == 'NNDB':
+    print('Loading FORTRAN network')
+    fnn = QuaLiKizFortranNN('/home/karel/working/QLKNN-fortran/lib/src/qlknn-hyper-namelists')
+    combo_nns = []
+    target_names = []
+    summers = []
+    idxs = {}
+    prefixes = ['efe', 'efi', 'pfe', 'dfe', 'vte', 'vce', 'dfi', 'vti', 'vci']
+    for prefix in prefixes:
+        fnn.opts.force_evaluate_all = True
+        this_idx = [fnn._target_names.index(name) for name in fnn._target_names if name.startswith(prefix)]
+        summers.append(Summer(this_idx))
+        print('Creating', prefix, 'network')
+        combo_nns.append(QuaLiKizComboNN(pd.Series([prefix + '_GB']), [fnn], summers[-1].sum))
+        target_names.append(prefix + '_GB')
+    combo_nn = QuaLiKizComboNN(target_names + fnn._target_names, combo_nns + [fnn], combo_func)
+    nn = combo_nn
+elif nn_source == 'NNDB':
     nN_mn_out = 7
 
     ITG_list = [get_pure_from_hyperpar(
@@ -116,11 +146,6 @@ if nn_source != 'QLKNN-fortran':
 
     #vic_nn = VictorNN(combo_nn, gam)
     nn = LeadingFluxNN.add_leading_flux_clipping(combo_nn)
-else:
-    print('Loading FORTRAN network')
-    nn = QuaLiKizFortranNN('../QLKNN-fortran/lib')
-    nn.opts.force_evaluate_all = True
-    combo_nn = None
 
 qlknn_9D_feature_names = [
         "Zeff",
@@ -162,6 +187,7 @@ if __name__ == '__main__':
     input = pd.DataFrame()
     input['Ati'] = np.array(np.linspace(2,13, scann))
     input['Ti_Te']  = np.full_like(input['Ati'], 1.)
+    input['Te']  = np.full_like(input['Ati'], 1.)
     input['Zeff']  = np.full_like(input['Ati'], 1.)
     input['An']  = np.full_like(input['Ati'], 2.)
     input['Ate']  = np.full_like(input['Ati'], 5.)
@@ -197,6 +223,7 @@ if __name__ == '__main__':
         ])
         combof = pd.DataFrame(combined_fluxes)
         print(combof)
+        print(combo_flux)
     print(leading_flux.loc[:, raptor_order[:-1]])
     embed()
     #input['gammaE'] = np.full_like(input['Ati'], 0.1)
