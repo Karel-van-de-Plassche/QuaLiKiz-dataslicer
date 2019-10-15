@@ -157,7 +157,7 @@ def extract_plotdata(sel_dict):
                     df_nn = nn.get_output(input)
                 elif is_fortranNN:
                     input['Te'] = Te
-                    vars['Ai1'] = ds.attrs['Ai']
+                    vars['Ai1'] = ds.attrs['Ai'][0]
                     df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=vars['Ai1'])
             else:
                 df_nn = nn.get_output(input)
