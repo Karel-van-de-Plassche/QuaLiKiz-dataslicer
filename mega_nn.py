@@ -39,10 +39,10 @@ if nn_source == 'NNDB':
 if nn_source == 'QLKNN-fortran':
     from qlknn.models.qlknn_fortran import QuaLiKizFortranNN
     print('Loading FORTRAN network')
-    fnn = QuaLiKizFortranNN('/home/karel/working/QLKNN-fortran/lib/src/qlknn-hyper-namelists')
+    fnn = QuaLiKizFortranNN('../QLKNN-fortran/lib/src/qlknn-hyper-namelists')
     fnn.opts.merge_modes = 0
     fnn.opts.force_evaluate_all = 1
-    combo_fnn = QuaLiKizFortranNN('/home/karel/working/QLKNN-fortran/lib/src/qlknn-hyper-namelists')
+    combo_fnn = QuaLiKizFortranNN('../QLKNN-fortran/lib/src/qlknn-hyper-namelists')
     combo_fnn.opts.merge_modes = 1
     combo_nn = QuaLiKizComboNN(combo_fnn._target_names + fnn._target_names, [combo_fnn, fnn], combo_func)
     # Nested-python ComboNetwork way
