@@ -15,10 +15,10 @@ RUN pip install ipython
 # Install NNDB requirements
 RUN env NO_SQLITE=1 pip install peewee psycopg2
 
-ARG QLKNN_DEVELOP_VERSION=72572f7984522303b2933bc3c1de320e288d9893
-ARG QLKNN_FORTRAN_VERSION=e43a5bd006103f014a92e178998798d972629002
-ARG QLKNN_HYPER_VERSION=v0.2.0
-ARG QUALIKIZ_PYTHONTOOLS_VERSION=9c23cb57414435b7a25079b379430d8e65852651
+ARG QLKNN_DEVELOP_VERSION=b5877b1eebdf0d226eb195b8cd706b0b660fc15e
+ARG QLKNN_FORTRAN_VERSION=371f575ea806cd89341ed62e458bae0ed8e528b3
+ARG QLKNN_HYPER_VERSION=v0.5.0
+ARG QUALIKIZ_PYTHONTOOLS_VERSION=b42f7aa1e475807c25683cd18f984553aff8fbbe
 # Download and install QLKNN-develop source
 RUN cd / && git clone https://gitlab.com/karel-van-de-plassche/QLKNN-develop.git &&\
     git -C QLKNN-develop checkout $QLKNN_DEVELOP_VERSION
@@ -29,18 +29,19 @@ RUN apk add --no-cache \
 RUN pip install f90nml f90wrap
 RUN git clone https://gitlab.com/QuaLiKiz-group/QLKNN-fortran.git &&\
     git -C QLKNN-fortran checkout $QLKNN_FORTRAN_VERSION
-RUN cp /QLKNN-fortran/src/make.inc/Makefile.docker-debian /QLKNN-fortran/src/Makefile.inc
-RUN sed -i '/QLKNNDIR=*/c\QLKNNDIR='/QLKNN-fortran /QLKNN-fortran/src/Makefile.inc
-RUN sed -i "s/'string' : 'string',/'string' : 'str',/" /opt/conda/lib/python3.6/site-packages/f90wrap/fortran.py
-RUN  sed -i "s/'char' : 'string',/'char' : 'str',/" /opt/conda/lib/python3.6/site-packages/f90wrap/fortran.py
-RUN sed -i "s/'signed_char' : 'string',/'signed_char' : 'str',/" /opt/conda/lib/python3.6/site-packages/f90wrap/fortran.py
-RUN cd /QLKNN-fortran/src && make FC_WRAPPER='$(FC)' python
-RUN mv /QLKNN-fortran/src/_QLKNNFORT.cpython-36m-x86_64-linux-gnu.so /QLKNN-fortran/src/QLKNNFORT.py /QLKNN-develop/qlknn/models
+#RUN cp /QLKNN-fortran/src/make.inc/Makefile.docker-debian /QLKNN-fortran/src/Makefile.inc
+#RUN sed -i '/QLKNNDIR=*/c\QLKNNDIR='/QLKNN-fortran /QLKNN-fortran/src/Makefile.inc
+#RUN sed -i "s/'string' : 'string',/'string' : 'str',/" /opt/conda/lib/python3.6/site-packages/f90wrap/fortran.py
+#RUN  sed -i "s/'char' : 'string',/'char' : 'str',/" /opt/conda/lib/python3.6/site-packages/f90wrap/fortran.py
+#RUN sed -i "s/'signed_char' : 'string',/'signed_char' : 'str',/" /opt/conda/lib/python3.6/site-packages/f90wrap/fortran.py
+RUN git -C /QLKNN-fortran submodule update --init
+RUN cd /QLKNN-fortran && make TOOLCHAIN=gcc TUBSCFG_MPI=0 python
+RUN mv /QLKNN-fortran/build/gcc-release-default/_QLKNNFORT.cpython-36m-x86_64-linux-gnu.so /QLKNN-fortran/build/gcc-release-default/QLKNNFORT.py /QLKNN-develop/qlknn/models
 
 RUN cd /QLKNN-fortran && git clone https://gitlab.com/qualikiz-group/qlknn-hyper.git &&\
     git -C qlknn-hyper checkout $QLKNN_HYPER_VERSION
-RUN mkdir /QLKNN-fortran/lib
-RUN python QLKNN-fortran/tools/json_nn_to_namelist.py /QLKNN-fortran/qlknn-hyper/ /QLKNN-fortran/lib
+RUN mkdir -p /QLKNN-fortran/lib/src/qlknn-hyper-namelists
+RUN python QLKNN-fortran/tools/json_nn_to_namelist.py /QLKNN-fortran/qlknn-hyper/ /QLKNN-fortran/lib/src/qlknn-hyper-namelists
 
 RUN git clone https://gitlab.com/qualikiz-group/qualikiz-pythontools.git &&\
     git -C qualikiz-pythontools checkout $QUALIKIZ_PYTHONTOOLS_VERSION
