@@ -70,8 +70,22 @@ def extract_plotdata(sel_dict):
     #slice_sep = ds_sep.sel(**sel_dict)
     #slice_grow = ds_grow.sel(**sel_dict)
     #slice_ = xr.merge([slice_, slice_grow])
-    if 'nions' in slice_.dims:
-        slice_ = slice_.sel(nions=0)
+    for var_name in slice_.data_vars:
+        if any(mode in var_name for mode in ['ETG', 'ITG', 'TEM']):
+            if var_name[-7] == 'e':
+                continue
+        else:
+            if var_name[-4] == 'e':
+                continue
+        for ion in range(num_ions):
+            if any(mode in var_name for mode in ['ETG', 'ITG', 'TEM']):
+                new_name = var_name[:-6] + str(ion) + var_name[-6:]
+            else:
+                new_name = var_name[:-3] + str(ion) + var_name[-3:]
+            if 'nions' in slice_.dims:
+                slice_[new_name] = slice_[var_name].sel(nions=ion)
+            else:
+                slice_[new_name] = slice_[var_name]
     if xaxis_name == rotvar:
         slice_flux = slice_[fluxlike_vars].reset_coords(drop=True)
         columns = [k for k in slice_flux.variables if k not in slice_flux.dims]
@@ -140,11 +154,21 @@ def extract_plotdata(sel_dict):
             if plot_rot and plot_victor and ((hasattr(nn, '_internal_network') and isinstance(nn._internal_network, VictorNN)) or # Has victor rule
                                 is_fortranNN): #Is Fortran NN
                 vars = pd.DataFrame()
-                for name in ['Zeff', 'ne', 'Nustar', 'logNustar', 'q', 'Ro', 'Rmin', 'x']:
+                for name in ['Nustar', 'logNustar']:
                     if name in input:
                         vars[name] = input[name]
                     elif name in ds.attrs:
                         vars[name] = ds.attrs[name]
+                if 'Nustar' not in vars and 'logNustar' not in vars:
+                    raise Exception('Nustar nor logNustar not in NN input nor dataset! Cannot reconstruct Te')
+
+                for name in ['Zeff', 'ne', 'q', 'Ro', 'Rmin', 'x']:
+                    if name in input:
+                        vars[name] = input[name]
+                    elif name in ds.attrs:
+                        vars[name] = ds.attrs[name]
+                    else:
+                        raise Exception('Name {!s} not in NN input nor dataset! Cannot reconstruct Te'.format(name))
                 if 'logNustar' in vars:
                     vars['Nustar'] = 10**vars.pop('logNustar')
                 Te = calc_te_from_nustar(*[vars[name] for name in ['Zeff', 'ne', 'Nustar', 'q', 'Ro', 'Rmin', 'x']])
@@ -161,11 +185,30 @@ def extract_plotdata(sel_dict):
                     df_nn = nn.get_output(input, R0=ds.attrs['Ro'], a=ds.attrs['Rmin'], A1=vars['Ai1'])
             else:
                 df_nn = nn.get_output(input)
+
+            # Rename ions with numbers
+            for var_name in list(df_nn.columns):
+                if 'gam' in var_name:
+                    continue
+                if any(mode in var_name for mode in ['ETG', 'ITG', 'TEM']):
+                    if var_name[-7] == 'e' or var_name[-7].isnumeric():
+                        continue
+                else:
+                    if var_name[-4] == 'e' or var_name[-4].isnumeric():
+                        continue
+                for ion in range(num_ions):
+                    if any(mode in var_name for mode in ['ETG', 'ITG', 'TEM']):
+                        new_name = var_name[:-6] + str(ion) + var_name[-6:]
+                    else:
+                        new_name = var_name[:-3] + str(ion) + var_name[-3:]
+                    df_nn[new_name] = df_nn[var_name]
+                del df_nn[var_name]
+
             if gam_leq_nns[nn_name] is not None:
                 df_gam_leq = gam_leq_nns[nn_name].get_output(input)
                 gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
                 df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
-            df_nn.drop([name for name in nn._target_names if not name in fluxlike_vars], axis=1, inplace=True)
+            df_nn.drop([name for name in df_nn.columns if not name in fluxlike_vars], axis=1, inplace=True)
             not_there = [var for var in fluxlike_vars if var not in df_nn.columns]
             if plot_nn_eb:
                 cols_with_eb = [col[:-3] for col in df_nn.columns if col.endswith('_EB')]
@@ -292,7 +335,9 @@ if socket.gethostname().startswith('rs'):
     root_dir = '/Rijnh/Shares/Departments/Fusiefysica/IMT/karel'
 else:
     root_dir = '../qlk_data/gen5'
+    root_dir = '/mnt/data/qlk_data/'
 ds_to_plot = '9D'
+#ds_to_plot = '11D'
 #ds_to_plot = 'rot_one'
 #ds_to_plot = 'bart'
 constrain_to_rot = False
@@ -320,6 +365,8 @@ elif ds_to_plot == 'bart':
     ds = xr.open_dataset(os.path.join(root_dir, '../NN-data/qlk_run/qlk_run.nc'))
     ds['Ati0'] = ds['Ati']
     ds = ds.swap_dims({'Ati': 'Ati0'})
+elif ds_to_plot == '11D':
+    ds = xr.open_dataset('/mnt/ssd1/qlk_data/cube2/Nustar_1e-05_netcdf_cleaned/folded_reduced.nc.1')
 
 #ds = ds.drop([x for x in ds.coords if x not in ds.dims and x not in ['Zi']])
 if 'Nustar' in ds.dims:
@@ -432,6 +479,7 @@ else:
 norm = '_GB'
 plot_nn_eb = True
 show_legend = True
+num_ions = 1
 
 if plot_full:
     flux_suffixes = ['']
@@ -533,6 +581,16 @@ try:
 except NameError:
     pass
 
+# As we make our plots explicitly, separate out the multiple ions
+old_flux_vars = flux_vars.copy()
+flux_vars = []
+for pre, species, suff, norm in old_flux_vars:
+    if species == 'i':
+        for ion in range(num_ions):
+            flux_vars.append((pre, species + str(ion), suff, norm))
+    else:
+        flux_vars.append((pre, species, suff, norm))
+fluxlike_vars = [''.join(var) for var in flux_vars]
 
 ############################################################
 # Create sliders                                           #
@@ -676,7 +734,7 @@ if plot_freq:
 ############################################################
 from bokeh.palettes import Category20
 sepcolor = Category20[20]
-particle_names = ['e'] + ['i']
+particle_names = ['e'] + ['i' + str(ion) for ion in range(num_ions)]
 if plot_nn:
     nn_names = nns.keys()
 else:
@@ -717,8 +775,9 @@ for pre, species, suff, norm in flux_vars:
                                )
         else:
             for nn in nns.values():
-                if (fluxname in list(nn._target_names) or
-                   (pre == 'gam' and not all([nn is None for nn in gam_leq_nns.values()]))):
+                # Not sure if this is needed or we can just keep empty glyhps
+                #if (fluxname in list(nn._target_names) or
+                #   (pre == 'gam' and not all([nn is None for nn in gam_leq_nns.values()]))):
                     if show_legend:
                         legend = nn_name
                     else:
