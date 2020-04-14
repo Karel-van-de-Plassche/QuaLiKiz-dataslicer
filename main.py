@@ -191,16 +191,17 @@ def extract_plotdata(sel_dict):
                 if 'gam' in var_name:
                     continue
                 if any(mode in var_name for mode in ['ETG', 'ITG', 'TEM']):
-                    if var_name[-7] == 'e' or var_name[-7].isnumeric():
-                        continue
+                    ion_identifier_idx = -7
+                    if var_name.endswith('_EB'):
+                        ion_identifier_idx -= 3
                 else:
-                    if var_name[-4] == 'e' or var_name[-4].isnumeric():
-                        continue
+                    ion_identifier_idx = -4
+                    if var_name.endswith('_EB'):
+                        ion_identifier_idx -= 3
+                if var_name[ion_identifier_idx] == 'e' or var_name[ion_identifier_idx].isnumeric():
+                    continue
                 for ion in range(num_ions):
-                    if any(mode in var_name for mode in ['ETG', 'ITG', 'TEM']):
-                        new_name = var_name[:-6] + str(ion) + var_name[-6:]
-                    else:
-                        new_name = var_name[:-3] + str(ion) + var_name[-3:]
+                    new_name = var_name[:ion_identifier_idx+1] + str(ion) + var_name[ion_identifier_idx+1:]
                     df_nn[new_name] = df_nn[var_name]
                 del df_nn[var_name]
 
