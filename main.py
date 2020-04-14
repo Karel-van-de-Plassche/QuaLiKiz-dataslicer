@@ -209,7 +209,7 @@ def extract_plotdata(sel_dict):
                 df_gam_leq = gam_leq_nns[nn_name].get_output(input)
                 gam_leq_cols = [col for col in df_gam_leq.columns if col.startswith('gam_leq')]
                 df_nn[gam_leq_cols] = df_gam_leq[gam_leq_cols].clip(lower=0)
-            df_nn.drop([name for name in df_nn.columns if not name in fluxlike_vars], axis=1, inplace=True)
+            #df_nn.drop([name for name in df_nn.columns if not name in fluxlike_vars], axis=1, inplace=True)
             not_there = [var for var in fluxlike_vars if var not in df_nn.columns]
             if plot_nn_eb:
                 cols_with_eb = [col[:-3] for col in df_nn.columns if col.endswith('_EB')]
