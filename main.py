@@ -19,7 +19,7 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 from IPython import embed
 from bokeh.plotting import figure, show, reset_output, Figure
-from bokeh.layouts import row, column, layout, gridplot, Spacer, widgetbox
+from bokeh.layouts import row, column, layout, gridplot, Spacer
 from bokeh.models.widgets import Button, Div
 from bokeh.models import HoverTool, Band
 from bokeh.io import curdoc
@@ -622,12 +622,12 @@ for slider in slider_dict.values():
 
 # Display the sliders in two columns
 height_block = 300
-slidercol1 = widgetbox(list(slider_dict.values())[:len(slider_dict)//2],
+slidercol1 = column(list(slider_dict.values())[:len(slider_dict)//2],
                        height=int(.75*height_block),
                        name='slidercol1',
                        sizing_mode='scale_both'
                        )
-slidercol2 = widgetbox(list(slider_dict.values())[len(slider_dict)//2:],
+slidercol2 = column(list(slider_dict.values())[len(slider_dict)//2:],
                        height=int(.75*height_block),
                        name='slidercol2',
                        sizing_mode='scale_both'
@@ -767,12 +767,12 @@ for pre, species, suff, norm in flux_vars:
             glyph = fig.scatter('xaxis', fluxname,
                                 source=flux_source,
                                 color=colors[species],
-                                legend=legend,
+                                legend_label=legend,
                                )
             glyph = fig.scatter('xaxis', fluxname,
                                 source=rot_source,
                                 color=rot_colors[species],
-                                legend=legend,
+                                legend_label=legend,
                                )
         else:
             for nn in nns.values():
@@ -787,7 +787,7 @@ for pre, species, suff, norm in flux_vars:
                                      source=nn_source,
                                      color=colors[species],
                                      line_dash=dashes[nn_name],
-                                     legend=legend,
+                                     legend_label=legend,
                                     )
                     if plot_nn_eb:
                         band = Band(base='xaxis',
